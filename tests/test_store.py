@@ -216,6 +216,26 @@ class StoreTests(unittest.TestCase):
         self.assertIsNone(self.store.get_document("support", "absent"))
         self.assertIsNone(self.store.source("support", "absent"))
 
+    def test_invalid_utf8_identifiers_fail_before_transaction_and_preserve_document(self):
+        self.put()
+        before = self.store.get_document("support", "guide")
+        before_hits = self.store.search("support", [1, 0], "test-embedding-v1")
+        for title, model, document_id in [
+            ("Invalid \ud800 title", "test-embedding-v1", "guide"),
+            ("Title", "invalid-\udfff-model", "guide"),
+            ("Title", "test-embedding-v1", "invalid-\ud800-id"),
+        ]:
+            with self.subTest(title=ascii(title), model=ascii(model), document_id=ascii(document_id)):
+                with self.assertRaisesRegex(ValueError, "valid UTF-8"):
+                    self.store.put("support", title, "Replacement fact.", [[1, 0]], model, document_id)
+                self.assertFalse(self.store.connection.in_transaction)
+                self.assertEqual(self.store.get_document("support", "guide"), before)
+                self.assertEqual(self.store.search("support", [1, 0], "test-embedding-v1"), before_hits)
+
+        for lookup in (self.store.get_document, self.store.delete, self.store.source):
+            with self.subTest(lookup=lookup.__name__), self.assertRaisesRegex(ValueError, "valid UTF-8"):
+                lookup("support", "invalid-\ud800-id")
+
 
 if __name__ == "__main__":
     unittest.main()

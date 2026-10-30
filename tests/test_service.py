@@ -145,6 +145,8 @@ class ServiceTests(unittest.TestCase):
             ("support", "Bad\ntitle", "Fact", None),
             ("support", "FAQ", "Has a \x00 NUL.", None),
             ("support", "FAQ", "Invalid \ud800 Unicode.", None),
+            ("support", "Invalid \ud800 title", "Fact", None),
+            ("support", "FAQ", "Fact", "invalid-\udfff-id"),
             ("support", "FAQ", "é" * (1024 * 1024 + 1), None),
         ]:
             with self.subTest(collection=collection, title=title, text=text, document_id=document_id), self.assertRaises(ValueError):
@@ -232,6 +234,41 @@ class ServiceTests(unittest.TestCase):
         self.model.on_generate = lambda _sources: self.store.delete("support", "faq")
         with self.assertRaisesRegex(ModelProtocolError, "changed.*again"):
             self.service.ask("support", "Question?")
+
+    def test_uncited_context_changed_during_generation_requires_retry(self):
+        for mutation in ("replace", "delete"):
+            with self.subTest(mutation=mutation):
+                self.service.import_document("support", "Cited FAQ", "A retained fact.", "cited")
+                self.service.import_document("support", "Other FAQ", "An old fact.", "other")
+                cited = self.store.search("support", [1, 0, 0], self.model.embedding_model)[0]
+                self.model.answer_result = {"supported": True, "answer": "A retained fact.", "citations": [cited["id"]]}
+
+                def change_uncited(_sources):
+                    if mutation == "delete":
+                        self.store.delete("support", "other")
+                    else:
+                        self.service.import_document("support", "Other FAQ", "A replacement fact.", "other")
+
+                self.model.on_generate = change_uncited
+                with self.assertRaisesRegex(ModelProtocolError, "context changed.*again"):
+                    self.service.ask("support", "Question?")
+
+    def test_abstention_from_changed_context_requires_retry(self):
+        self.service.import_document("support", "FAQ", "An unrelated fact.", "faq")
+        self.model.answer_result = {"supported": False, "answer": "No evidence.", "citations": []}
+        self.model.on_generate = lambda _sources: self.service.import_document(
+            "support", "FAQ", "The requested fact is now available.", "faq"
+        )
+        with self.assertRaisesRegex(ModelProtocolError, "context changed.*again"):
+            self.service.ask("support", "What is the requested fact?")
+
+    def test_changes_in_another_collection_do_not_invalidate_answer(self):
+        self.service.import_document("support", "FAQ", "A retained fact.", "faq")
+        self.service.import_document("other", "FAQ", "An unrelated fact.", "faq")
+        self.model.on_generate = lambda _sources: self.store.delete("other", "faq")
+        answer = self.service.ask("support", "Question?")
+        self.assertTrue(answer["supported"])
+        self.assertEqual(answer["answer"], "A retained fact.")
 
     def test_generation_can_change_without_reembedding_collection(self):
         self.service.import_document("support", "FAQ", "A fact.")

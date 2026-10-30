@@ -14,6 +14,10 @@ def _identifier(value: str, name: str) -> str:
         raise ValueError(f"{name} must be a nonempty string of at most 1000 characters")
     if any(ord(character) < 32 for character in value):
         raise ValueError(f"{name} cannot contain control characters")
+    try:
+        value.encode("utf-8")
+    except UnicodeEncodeError as exc:
+        raise ValueError(f"{name} must use valid UTF-8 text encoding") from exc
     return value
 
 
@@ -104,14 +108,17 @@ class Service:
         # The provider is not trusted to validate itself, including fake/custom
         # providers used by an embedding host application.
         generated = validate_answer(self.model.generate(question, sources), set(by_id))
+        # Every retrieved passage can influence generation, including passages
+        # the model does not cite or uses to decide that evidence is missing.
+        for retrieved in sources:
+            current = self.store.source(collection, retrieved["id"])
+            if current is None or any(current.get(key) != retrieved.get(key) for key in current):
+                raise ModelProtocolError("Retrieved document context changed while the answer was generated. Ask the question again.")
         if not generated["supported"]:
             return self._abstain()
         citations = []
         for source_id in generated["citations"]:
             retrieved = by_id[source_id]
-            current = self.store.source(collection, source_id)
-            if current is None or any(current.get(key) != retrieved.get(key) for key in current):
-                raise ModelProtocolError("A cited document changed while the answer was generated. Ask the question again.")
             citations.append({**retrieved, "collection": collection})
         return {
             "supported": True,

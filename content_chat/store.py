@@ -60,6 +60,10 @@ def _identifier(value: str, name: str) -> str:
         raise ValueError(f"{name} must be a nonempty string of at most 1000 characters")
     if any(ord(char) < 32 for char in value):
         raise ValueError(f"{name} cannot contain control characters")
+    try:
+        value.encode("utf-8")
+    except UnicodeEncodeError as exc:
+        raise ValueError(f"{name} must use valid UTF-8 text encoding") from exc
     return value
 
 

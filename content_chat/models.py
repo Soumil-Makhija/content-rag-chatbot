@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from http.client import HTTPException
 import json
 import math
 import socket
@@ -149,6 +150,11 @@ class Ollama:
             if exc.code == 404:
                 raise ModelUnavailable("Ollama could not find the requested endpoint or model. Check the configured models with `ollama list`.") from exc
             raise ModelUnavailable(f"Ollama returned HTTP {exc.code}. Check that the selected models are installed and the local service is healthy.") from exc
+        except HTTPException as exc:
+            # HTTP framing errors can carry partial response bodies or status
+            # lines. Keep those details out of errors shown to the user.
+            # This precedes OSError because RemoteDisconnected inherits both.
+            raise ModelProtocolError("Ollama returned an incomplete or malformed HTTP response.") from exc
         except (URLError, TimeoutError, socket.timeout, OSError) as exc:
             raise ModelUnavailable(
                 f"Cannot reach Ollama at {self.base_url}. Start Ollama and install the configured models, then try again."

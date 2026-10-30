@@ -1,6 +1,7 @@
 """Deterministic protocol fixtures; these tests do not validate a live model."""
 
 import io
+from http.client import BadStatusLine, HTTPResponse, IncompleteRead, RemoteDisconnected
 import json
 import unittest
 from unittest.mock import Mock
@@ -121,13 +122,37 @@ class OllamaFixtureTests(unittest.TestCase):
                 self.client(response).health()
 
     def test_connection_and_http_errors_are_actionable(self):
-        errors = [URLError("unreachable"), TimeoutError(),
+        errors = [URLError("unreachable"), TimeoutError(), ConnectionRefusedError(), ConnectionResetError(),
                   HTTPError("http://localhost", 404, "missing", {}, None),
                   HTTPError("http://localhost", 500, "failed", {}, None)]
         for error in errors:
-            with self.subTest(error=error), self.assertRaises(ModelUnavailable) as context:
+            with self.subTest(error=error):
+                with self.assertRaises(ModelUnavailable) as context:
+                    self.client(error).health()
+                self.assertIn("Ollama", str(context.exception))
+
+    def test_truncated_chunked_response_is_a_sanitized_protocol_error(self):
+        # Exercise the real HTTP parser: the declared chunk is longer than the
+        # supplied bytes and contains text that must not enter the user error.
+        stream = io.BytesIO(b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n20\r\nPRIVATE DOCUMENT")
+        connection = Mock()
+        connection.makefile.return_value = stream
+        response = HTTPResponse(connection)
+        response.begin()
+        self.addCleanup(response.close)
+        client = self.client({})
+        client._opener.open.return_value = response
+        with self.assertRaisesRegex(ModelProtocolError, "incomplete or malformed HTTP response") as context:
+            client.health()
+        self.assertIsInstance(context.exception.__cause__, IncompleteRead)
+        self.assertNotIn("PRIVATE DOCUMENT", str(context.exception))
+
+    def test_invalid_status_or_disconnection_is_a_sanitized_protocol_error(self):
+        for error in (BadStatusLine("PRIVATE STATUS LINE"), RemoteDisconnected("PRIVATE DISCONNECT DETAILS")):
+            with self.subTest(error=type(error).__name__), self.assertRaises(ModelProtocolError) as context:
                 self.client(error).health()
-            self.assertIn("Ollama", str(context.exception))
+            self.assertEqual(str(context.exception), "Ollama returned an incomplete or malformed HTTP response.")
+            self.assertIs(context.exception.__cause__, error)
 
     def test_redirects_are_rejected(self):
         redirect = HTTPError("http://localhost", 302, "redirect", {"Location": "https://example.com"}, None)
