@@ -1,46 +1,51 @@
 # Validation record
 
-Implementation date: 2026-10-30 America/Vancouver, continuing scheduled run `2026-10-29_090848`.
+Latest run: `2026-10-30_090531`, America/Vancouver. Continued the earliest unfinished project; no new repository was created. The previous run delivered the initial CLI, local web API and persistent vector store with 75 regression tests.
 
-Status: **blocked on real local model availability**, not complete. No paid provider or usage budget was authorized; no credentials, gated models, model downloads, or billing setup were used.
+Status: **blocked on real local model availability**, not complete. No paid provider or usage budget was authorized; no credentials, gated models, model downloads, or billing setup were used. An optional request for authorized model access remains unanswered at this record.
 
 ## Observed checks
 
 | Check | Observed result |
 | --- | --- |
-| `python3 -m unittest discover -v` | 75 passed in 2.895s on the final integration on Python 3.14.2 |
-| Exact cosine and persistence | Passed known-vector, disk reopen, Unicode chunk tests |
-| Corpus lifecycle | Passed update/delete, stale sources, transaction rollback, concurrent model-change regression |
-| Isolation and provenance | Passed collection-scoped retrieval and citation lookups |
-| API and CLI | Passed actual loopback HTTP requests and persisted CLI subprocess use, with explicit fixture inference |
-| Package installation | Passed clean temporary venv install, installed `content-chat --help`, packaged HTML/JS/CSS inspection |
-| Compilation / JS syntax / whitespace | `compileall`, `node --check`, `git diff --check` passed |
-| Real embedding / language inference | **Not run successfully**; no local runtime/models/service available |
-| Browser visual QA | Unavailable: browser-control surfaces `iab` and `chrome` not available |
+| Baseline `python3 -m unittest discover -v` | 75 passed in 3.003s, Python 3.14.2 |
+| Correctness milestone | 81 passed in 2.973s |
+| Import/retrieval/UI milestone | 86 passed in 3.098s |
+| `node --test tests/web-state.test.js` | 3 passed; real browser event handlers executed with a minimal synthetic DOM/fetch harness |
+| Exact cosine and persistence | Known-vector ranking, restart and collection isolation regressions pass |
+| Large import atomicity | 67 chunks issue ordered requests of 32/32/3; vector-to-chunk mapping checked. Fifteen later-batch failure scenarios preserve the existing document/source IDs and avoid partial documents/collections |
+| Context freshness | Changes/deletion of cited or uncited retrieved passages and stale abstention context require retry; unrelated collection changes remain valid |
+| Protocol/input failure paths | Invalid UTF-8 identifiers rejected before inference; malformed/truncated HTTP responses become sanitized model protocol errors |
+| CLI and HTTP | Persisted subprocess workflow and actual loopback HTTP lifecycle/error/isolation requests pass with explicit fixture inference |
+| Package installation | Fresh temporary virtualenv install passed; installed entry point and empty-corpus abstention from outside the checkout passed; all HTML/JS/CSS assets are packaged |
+| Compilation / JavaScript syntax / whitespace | `compileall`, `node --check`, and `git diff --check` pass |
+| Real embedding / language inference | **Not run successfully**; no installed runtime/models or reachable model service |
+| Browser QA | Chrome rendered the synthetic library; changing the collection cleared stale controls. Further interaction hit an automatic-review timeout. Full visual and live-model browser QA remain unverified |
 
-Regression inference fixtures test orchestration and error handling, not the AI acceptance criteria. CI validates deterministic tests and packaging; it does not establish real-model quality. GitHub Actions results are available in the repository's [checks](https://github.com/Soumil-Makhija/content-rag-chatbot/actions).
+Tests requiring local sockets were rerun with automatic-review escalation after sandbox binding was denied. This does not weaken global sandbox settings. Regression inference fixtures test orchestration and failure handling, not AI acceptance. GitHub Actions validates deterministic tests and packaging; its results are available in the repository's [checks](https://github.com/Soumil-Makhija/content-rag-chatbot/actions).
 
-## Live evaluation attempt
+## Stronger evaluation, still awaiting real inference
 
 ```sh
+python3 -m content_chat doctor
 python3 tools/evaluate_live.py --output local-evaluation.json
 ```
 
-The actual attempt was retried outside the restricted sandbox so a denied socket would not be mistaken for missing access. Result: exit **2**, `status: blocked`, no model cases executed.
+The evaluator now imports eight support documents (two relevant and six distractors), plus a conflicting enterprise policy. After reopening SQLite, three retrieval probes require the correct documents at top-k 1/1/2 and record exact scores, full passages, expectations, corpus size and timing. A guard rejects a corpus small enough to fit entirely inside top-k. Nine answer/lifecycle cases retrieve at most two passages and cover answerable, multi-document, related/unrelated unsupported, conflicting collections, replacement and deletion behavior.
 
-Configured provider: local Ollama at `http://127.0.0.1:11434`. Configured embedding: `nomic-embed-text`; generation: `qwen2.5:3b`. Error: `Cannot reach Ollama at http://127.0.0.1:11434. Start Ollama and install the configured models, then try again.` Local ports 11434, 1234 and 8080 refused connections; no Ollama/LM Studio applications, binaries, or common model caches were found. These are configuration names, not observed inference identities.
+The explicitly synthetic harness run passed **82/82 structural and lexical checks**, with three retrieval and nine answer cases. Those hand-coded fixture vectors and answers are not a model evaluation. Regressions show that constant bad embeddings fail selective retrieval even when a canned answer contains an expected phrase; removing distractors also fails the corpus-size guard despite passing answer checks.
 
-No accuracy, latency benchmark, grounding success, or prompt-injection resistance is claimed. The evaluation report's short health-check duration measures a failed availability check, not inference latency.
+The actual live attempt was retried outside restricted sandbox networking. Result: exit **2**, `status: blocked`, zero retrieval cases and zero answer cases executed. Configured provider: Ollama at `http://127.0.0.1:11434`; embedding `nomic-embed-text`; generation `qwen2.5:3b`. A direct unsandboxed socket check returned `ConnectionRefusedError: [Errno 61] Connection refused`. No Ollama/llama runtime, relevant Python inference packages, or common model caches were found. Configuration names are not observed inference identities.
+
+No accuracy, inference latency, grounding success or prompt-injection resistance is claimed. Passing lexical/structural checks will still require manual review of every real answer and its supporting passages. Loopback alone cannot prove local inference: disable Ollama cloud features and use installed local models. The builder changed no host model settings.
 
 ## Acceptance evidence still needed
 
 | Acceptance criterion | Current evidence and outstanding work |
 | --- | --- |
-| Import, restart, persisted vector index | Persistence and restart pass with fixture embeddings; repeat through the real embedding workflow |
-| Real embeddings + generation with resolvable citations | Adapter and source resolution regressions pass; actual model calls and grounded answers remain unverified |
-| Answerable and unsupported evaluation questions | Evaluation set/harness implemented; run real models and manually inspect all answers/citations/abstentions |
-| Updates/deletion and collection isolation | Deterministic lifecycle and HTTP tests pass; repeat real model-backed lifecycle evaluation |
+| Import, restart, persisted vector index | Fixture persistence/restart and atomic batched imports pass; repeat using real embeddings |
+| Real embeddings + generation with resolvable citations | Adapter, ranking and source resolution regressions pass; actual calls and grounded answers remain unverified |
+| Answerable and unsupported questions | Selective retrieval/answer evaluation set implemented; run real models and manually inspect every answer/citation/abstention |
+| Updates/deletion and collection isolation | Deterministic lifecycle, stale context and HTTP tests pass; repeat real model-backed lifecycle evaluation |
 
-To finish, supply/start a local Ollama runtime with suitable installed embedding and generation models, run `doctor`, run the evaluator, and inspect the recorded answers. Fix actual model-specific failures before marking complete. A hosted alternative would require a separately authorized provider, credentials, usage limits and an implemented adapter; the app currently supports local Ollama only.
-
-Final integration adds an explicit known-cloud-model-name guard and documents the local-server trust boundary. Loopback alone is not proof of local inference; operators must disable Ollama cloud features and use installed models. The builder did not change host Ollama settings.
+To finish, make an authorized local runtime and embedding/generation models available, then run doctor and the live evaluator. Inspect actual answers and retrieval ranking, fix model-specific failures, and record evidence before marking complete. A hosted alternative requires a separately authorized provider, credential, usage limits and an implemented adapter; this app currently supports local Ollama only.

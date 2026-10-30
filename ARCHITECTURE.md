@@ -6,13 +6,13 @@ The SQLite database holds original documents, chunks and embedding vectors. Retr
 
 Ollama provides local embeddings and JSON generation. The application rejects remote endpoints, redirects, invalid vectors, malformed generation and citations outside the retrieved set. The generator must abstain when passages do not support a question. An accepted citation proves that the referenced passage exists; it cannot mechanically prove the generated claim follows from it. Imported document text is untrusted evidence, never a trusted instruction.
 
-Import embeds the complete replacement before a database transaction, preserving an existing document when the model fails. Collection model checks prevent mixing vector spaces; deleting the final document permits selecting a new model. All source and document lookups include collection scope.
+Import embeds in batches of at most 32 chunks, validates vector counts and dimensions across batches, and gathers the complete replacement before a database transaction, preserving an existing document when the model fails. Collection model checks prevent mixing vector spaces; deleting the final document permits selecting a new model. All source and document lookups include collection scope.
 
 The local HTTP interface binds loopback only, validates Host and Origin, uses JSON requests and resolves source links through database IDs rather than filesystem paths. It has no user authentication and is a single-user local tool. Collection separation is an application boundary, not an access-control system for mutually untrusted users.
 
 ## Completion evidence
 
-Automated regression tests must exercise persistent retrieval, atomic lifecycle changes, scoped citation resolution, CLI and HTTP error paths. The included separate live evaluation must call an installed embedding model and language model on synthetic FAQ documents, reopen the database, check answerable/unsupported questions and inspect source-grounded answers. No model runtime is installed in the current build environment; fixture tests do not satisfy that live-inference requirement.
+Automated regression tests must exercise persistent retrieval, atomic lifecycle changes, scoped citation resolution, CLI and HTTP error paths. The included separate live evaluation must call an installed embedding model and language model on synthetic FAQ documents, reopen the database, verify selective top-k retrieval against distracting documents, check answerable/unsupported questions and inspect source-grounded answers. No model runtime is installed in the current build environment; fixture tests do not satisfy that live-inference requirement.
 
 ## Modules and failure boundaries
 
@@ -22,7 +22,7 @@ Automated regression tests must exercise persistent retrieval, atomic lifecycle 
 - `cli.py` / `server.py` / `web/`: JSON CLI, single-threaded local API and browser client. Document content is rendered as text.
 - `tools/evaluate_live.py`: disposable persistent corpus and actual-model evaluation; missing runtime reports blocked, never fixture success.
 
-Vectors are normalized before storage. Signature and chunk reads use a single SQLite statement so another process cannot swap vector spaces between metadata checks and scoring. A cited chunk is re-resolved after generation; a concurrent update/delete returns a retry error. This cannot guarantee a source will remain unchanged after the response reaches a reader. Original text and vectors share the same database transaction during replacement.
+Vectors are normalized before storage. Signature and chunk reads use a single SQLite statement so another process cannot swap vector spaces between metadata checks and scoring. Every retrieved chunk is re-resolved after generation, including uncited passages and context used for abstention; an observed concurrent update/delete returns a retry error. Added documents and changes to unretrieved chunks are not detected by this check. This cannot guarantee a source will remain unchanged after the response reaches a reader. Original text and vectors share the same database transaction during replacement.
 
 Stored model signatures include the configured name and vector dimension. Weight digests and task-prefix configuration are not pinned. Replacing a model tag or changing its embedding behavior requires rebuilding the affected collection. Exact retrieval and character chunking support modest local corpora; this project does not claim scalable approximate indexing or tokenizer-aware context guarantees.
 

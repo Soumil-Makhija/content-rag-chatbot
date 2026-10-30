@@ -2,7 +2,7 @@
 
 A local support and FAQ chatbot for your own documents. Import UTF-8 Markdown or text, retrieve relevant passages from a persistent SQLite vector store, and ask local Ollama models for answers with inspectable source citations. Use the CLI, a loopback JSON API, or the included browser interface.
 
-**Delivery status: real-model validation is blocked.** This build environment has no Ollama runtime, installed embedding/language models, or reachable local model server. The application and 75 regression tests are implemented; inference in those tests uses explicit fixtures. No AI quality or live grounding results are claimed. See [validation and outstanding acceptance evidence](VALIDATION.md).
+**Delivery status: real-model validation is blocked.** This build environment has no Ollama runtime, installed embedding/language models, or reachable local model server. The application, 86 Python regression tests, and 3 JavaScript handler tests are implemented; inference in those tests uses explicit fixtures. No AI quality or live grounding results are claimed. See [validation and outstanding acceptance evidence](VALIDATION.md).
 
 ## Run locally
 
@@ -62,7 +62,7 @@ The expected fictional facts are a 14-day trial, export through Settings → Exp
 
 When sources are insufficient, the model must return `supported:false`; the app responds: “I don't have enough information in this collection to answer that question.” Empty collections abstain without inference. An unavailable or malformed model produces an error rather than a substituted answer.
 
-Change a file and reimport it with the **same `--id`** to replace the document. Replacement increments its version and atomically replaces all chunks/vectors after embedding succeeds. Without `--id`, every import adds a new document, even if its title matches. Failed embeddings preserve the previous document.
+Change a file and reimport it with the **same `--id`** to replace the document. Imports embed at most 32 chunks per request and validate every batch before writing. Replacement increments its version and atomically replaces all chunks/vectors after every batch succeeds. Without `--id`, every import adds a new document, even if its title matches. Failed embeddings preserve the previous document.
 
 ```sh
 python3 -m content_chat --db demo.sqlite3 import support examples/billing.md --id billing
@@ -89,7 +89,7 @@ Commands emit JSON; errors go to stderr and exit 2. `doctor` exits 2 when models
 python3 -m content_chat --db demo.sqlite3 serve --port 8765
 ```
 
-Open `http://127.0.0.1:8765`. Select a collection and click **Open collection**, upload a `.md`/`.txt` file, optionally select an existing document to replace, and ask a question. Expand supporting passages or open their source records. Import/delete clears the previous displayed answer. Stop the server with Ctrl-C.
+Open `http://127.0.0.1:8765`. Select a collection and click **Open collection**, upload a `.md`/`.txt` file, optionally select an existing document to replace, and ask a question. Expand supporting passages or open their source records. Import/delete clears the previous displayed answer. Editing the collection field clears the displayed library, replacement choices, and answer; open the new collection to continue. Stale delete controls cannot mutate the previously opened collection. Stop the server with Ctrl-C.
 
 The server binds `127.0.0.1` only. It checks Host/Origin, accepts JSON writes, serves only packaged assets, and includes browser content restrictions. It is a single-user local tool with no authentication. Collections isolate retrieval; they do not give mutually untrusted users separate permissions. Other programs on this computer can access the local API. Keep Ollama itself configured for local use.
 
@@ -117,13 +117,14 @@ Invalid input returns 400; missing documents/sources return 404; malformed model
 ```sh
 python3 -m unittest discover -v
 python3 -m compileall -q content_chat tests tools
-node --check content_chat/web/app.js  # optional JavaScript syntax check
+node --check content_chat/web/app.js
+node --test tests/web-state.test.js  # Node 18+; no npm dependencies
 python3 tools/evaluate_live.py --output local-evaluation.json
 ```
 
-Tests exercise exact cosine ranking, restart persistence, atomic failure/rollback, concurrent model changes, replacements/deletion, collection isolation, citation validation, CLI subprocess use, real local HTTP requests, provider protocol errors, and the evaluation harness. All test inference is explicitly synthetic. CI runs Python 3.11/3.14 tests, packaging, entry-point smoke checks, and JavaScript syntax; it does not download/run models or send messages.
+Tests exercise exact cosine ranking, restart persistence, bounded embedding batches and late-batch rollback, concurrent model changes, replacements/deletion, collection isolation, stale retrieved context, citation validation, CLI subprocess use, real local HTTP requests, truncated model HTTP responses, collection control safety, and the evaluation harness. All test inference is explicitly synthetic. CI runs Python 3.11/3.14 tests, packaging, entry-point smoke checks, JavaScript syntax and handler tests; it does not download/run models or send messages.
 
-The separate evaluation script calls real configured local models on synthetic FAQ documents, closes/reopens the vector store before questions, checks answerable/multi-document/unsupported cases, uses conflicting policies in a separate collection, then updates and deletes a document. Output records actual answers, citations, configured models, timings and individual checks. It never modifies your existing database.
+The separate evaluation script calls real configured local models on synthetic FAQ documents, including six unrelated support documents. It closes/reopens the vector store, runs three selective retrieval probes at top-k 1/1/2 against eight support passages, and runs nine answer/lifecycle cases with at most two retrieved passages each. It checks answerable/multi-document/unsupported questions, conflicting policies in a separate collection, document replacement, and deletion. Output records retrieved passages and exact scores, corpus counts, expected document IDs, actual answers/citations, configured models, timings and individual checks. A retrieval check fails if the corpus fits entirely inside top-k, so a trivial whole-corpus prompt cannot pass that check. It never modifies your existing database.
 
 Exit 2 means access is blocked, 1 means checks/execution failed, and 0 means lexical/structural checks passed and **manual factual review is still required**. Expected phrases and valid citations do not prove an answer is correct. Inspect every answer and its supporting passages, particularly unsupported questions. Options `--ollama-url`, `--embedding-model`, and `--generation-model` select installed models.
 
@@ -135,8 +136,8 @@ Exit 2 means access is blocked, 1 means checks/execution failed, and 0 means lex
 - SQLite stores normalized vectors and performs exact cosine search in Python, linear in the selected collection's chunks. This is a small local vector database, without approximate-neighbor indexing or a total corpus quota. Data is plaintext at rest.
 - Embedding identity is tracked by model name and dimensions, not a weight digest. Do not replace a model tag's weights beneath an existing collection. Use a new collection or delete/reimport all documents when changing the embedding space. The generation model can change independently.
 - Every question is independent; there is no conversational memory. Only retrieved passages are supplied to generation, so missing a relevant passage can cause abstention.
-- Citation validation proves the cited passage exists in the requested collection. It cannot prove entailment, prevent all hallucinations, or guarantee resistance to malicious instructions in imported documents. Documents are prompted as untrusted evidence; generated text is rendered as text in the UI.
+- Every retrieved passage is rechecked after generation, including uncited passages and abstention context; changed/deleted context requires a retry. This check does not detect newly added or unretrieved documents or freeze the corpus after a response. Citation validation proves the cited passage exists in the requested collection. It cannot prove entailment, prevent all hallucinations, or guarantee resistance to malicious instructions in imported documents. Documents are prompted as untrusted evidence; generated text is rendered as text in the UI.
 - The HTTP server handles one request at a time. Long model calls block other requests until completion/timeout. No multi-user hosting, remote providers, account connectors or outbound messaging are included.
-- Browser automation was unavailable in the build environment; HTTP behavior/assets were tested, but visual browser QA remains unverified. Real model-backed acceptance remains outstanding.
+- Live Chrome smoke checks confirmed the synthetic library renders and editing the collection field clears stale document controls. Further browser interaction was blocked by an automatic-review timeout, so full visual QA remains unverified. HTTP and JavaScript handler regressions pass. Real model-backed acceptance remains outstanding.
 
 [Architecture](ARCHITECTURE.md) · [Validation](VALIDATION.md) · [MIT application license](LICENSE)
