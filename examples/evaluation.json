@@ -1,0 +1,54 @@
+{
+  "description": "Synthetic Acorn Workspace corpus. Automated checks cover expected phrases, citations, abstention, and collection boundaries; manual factual review remains necessary.",
+  "documents": [
+    {"collection": "support", "id": "support", "title": "Acorn Workspace Support", "file": "support.md"},
+    {"collection": "support", "id": "billing", "title": "Acorn Workspace Billing", "file": "billing.md"},
+    {"collection": "enterprise", "id": "billing", "title": "Acorn Enterprise Billing", "text": "Fictional enterprise contract: Enterprise annual subscriptions have a 90-day refund request window from purchase. This enterprise policy applies only to the enterprise collection."}
+  ],
+  "cases": [
+    {
+      "id": "trial",
+      "collection": "support",
+      "question": "How many days does the Acorn Workspace trial last?",
+      "expected": {"supported": true, "answer_terms": [["14", "fourteen"]], "citation_titles": ["Acorn Workspace Support"]}
+    },
+    {
+      "id": "standard-refund",
+      "collection": "support",
+      "question": "What is the refund request window for a standard annual subscription?",
+      "expected": {"supported": true, "answer_terms": [["30", "thirty"]], "forbidden_terms": ["90", "ninety"], "citation_titles": ["Acorn Workspace Billing"]}
+    },
+    {
+      "id": "multi-document",
+      "collection": "support",
+      "question": "How do I export my workspace, and what is the standard annual subscription refund request window?",
+      "expected": {"supported": true, "answer_terms": [["settings"], ["export"], ["json", "markdown"], ["30", "thirty"]], "citation_titles": ["Acorn Workspace Support", "Acorn Workspace Billing"]}
+    },
+    {
+      "id": "unsupported-related",
+      "collection": "support",
+      "question": "Exactly how many business days will my bank take to post an approved refund?",
+      "expected": {"supported": false, "answer_terms": [], "citation_titles": []}
+    },
+    {
+      "id": "unsupported-unrelated",
+      "collection": "support",
+      "question": "What is the surface temperature of Saturn?",
+      "expected": {"supported": false, "answer_terms": [], "citation_titles": []}
+    },
+    {
+      "id": "enterprise-refund",
+      "collection": "enterprise",
+      "question": "What is the enterprise annual subscription refund request window?",
+      "expected": {"supported": true, "answer_terms": [["90", "ninety"]], "forbidden_terms": ["30", "thirty"], "citation_titles": ["Acorn Enterprise Billing"]}
+    }
+  ],
+  "lifecycle": {
+    "collection": "support",
+    "document_id": "billing",
+    "title": "Acorn Workspace Billing",
+    "replacement_text": "Fictional revised standard billing policy: The standard annual subscription refund request window is now 45 days from purchase. This replaces the previous policy. Requests go to billing@acorn.example.",
+    "question": "What is the refund request window for a standard annual subscription?",
+    "updated_expected": {"supported": true, "answer_terms": [["45", "forty-five", "forty five"]], "forbidden_terms": ["30", "thirty", "90", "ninety"], "citation_titles": ["Acorn Workspace Billing"]}
+  }
+}

@@ -24,9 +24,10 @@ _COLLECTION = re.compile(r"[a-z][a-z0-9_-]{0,63}\Z")
 def chunk_text(text: str, size: int = 1200, overlap: int = 150) -> list[str]:
     """Split nonblank text into overlapping Unicode-character windows.
 
-    The first and last whitespace are trimmed once. Interior text is preserved,
-    and boundaries count Python characters rather than UTF-8 bytes. An empty or
-    whitespace-only input has no chunks. ``size`` must exceed ``overlap``.
+    The first and last whitespace are trimmed once. Interior text is preserved
+    in each retained window; whitespace-only windows are skipped. Boundaries
+    count Python characters rather than UTF-8 bytes. An empty or whitespace-only
+    input has no chunks. ``size`` must exceed ``overlap``.
     """
     if not isinstance(text, str):
         raise ValueError("text must be a string")
@@ -39,7 +40,9 @@ def chunk_text(text: str, size: int = 1200, overlap: int = 150) -> list[str]:
     start = 0
     while start < len(text):
         end = min(start + size, len(text))
-        chunks.append(text[start:end])
+        window = text[start:end]
+        if window.strip():
+            chunks.append(window)
         if end == len(text):
             break
         start = end - overlap
@@ -261,21 +264,29 @@ class Store:
         if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= 100:
             raise ValueError("search limit must be an integer between 1 and 100")
         query = _unit_vector(vector)
-        signature = self.collection_model(collection)
-        if not signature:
-            return []
-        if signature != {"model": model, "dimensions": len(query)}:
-            raise ValueError("query embedding model or dimensions differ from the collection")
+        # The signature and vectors must come from one SQLite read snapshot.
+        # Separate SELECTs would allow another process to empty and re-create
+        # this collection with a different model between those reads.
         rows = self.connection.execute(
-            """SELECT c.id, c.document_id, d.title, d.version, c.ordinal, c.text, c.vector
-               FROM chunks c JOIN documents d
+            """SELECT k.model AS embedding_model, k.dimensions AS embedding_dimensions,
+                      c.id, c.document_id, d.title, d.version, c.ordinal, c.text, c.vector
+               FROM collections k LEFT JOIN chunks c ON c.collection = k.name
+               LEFT JOIN documents d
                  ON d.collection = c.collection AND d.id = c.document_id
-               WHERE c.collection = ?""",
+               WHERE k.name = ?""",
             (collection,),
-        )
+        ).fetchall()
+        if not rows:
+            return []
+        if rows[0]["embedding_model"] != model or rows[0]["embedding_dimensions"] != len(query):
+            raise ValueError("query embedding model or dimensions differ from the collection")
         results = []
         for row in rows:
+            if row["id"] is None:
+                continue
             source = dict(row)
+            source.pop("embedding_model")
+            source.pop("embedding_dimensions")
             stored = json.loads(source.pop("vector"))
             score = math.fsum(a * b for a, b in zip(query, stored))
             source["score"] = max(-1.0, min(1.0, score))

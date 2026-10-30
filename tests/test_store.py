@@ -16,6 +16,12 @@ class ChunkTests(unittest.TestCase):
         self.assertEqual(chunk_text("abcdefg", 6, 3), ["abcdef", "defg"])
         self.assertEqual(chunk_text("\n  \t"), [])
 
+    def test_blank_interior_windows_are_skipped_without_changing_source_text(self):
+        text = "first" + " \n" * 1600 + "last"
+        chunks = chunk_text(text)
+        self.assertEqual(chunks, [text[:1200], text[2100:]])
+        self.assertTrue(all(chunk.strip() for chunk in chunks))
+
     def test_invalid_limits_and_input(self):
         for size, overlap in [(0, 0), (-1, 0), (3, -1), (3, 3), (3, 4), (True, 0), (3, False), (1.5, 0)]:
             with self.subTest(size=size, overlap=overlap), self.assertRaises(ValueError):
@@ -52,6 +58,17 @@ class StoreTests(unittest.TestCase):
         self.put(vector=[1e308, 1e308])
         hit = self.store.search("support", [1e-308, 1e-308], "test-embedding-v1")[0]
         self.assertAlmostEqual(hit["score"], 1.0)
+
+    def test_skipped_blank_windows_keep_embeddings_and_source_ordinals_aligned(self):
+        text = "first" + " \n" * 1600 + "last"
+        document = self.store.put("support", "Whitespace", text, [[1, 0], [0, 1]], "test-embedding-v1", "guide")
+        self.assertEqual(document["chunk_count"], 2)
+        self.assertEqual(self.store.get_document("support", "guide")["text"], text)
+        hits = self.store.search("support", [0, 1], "test-embedding-v1")
+        self.assertEqual([hit["ordinal"] for hit in hits], [1, 0])
+        self.assertEqual([hit["text"] for hit in hits], list(reversed(chunk_text(text))))
+        self.assertAlmostEqual(hits[0]["score"], 1)
+        self.assertAlmostEqual(hits[1]["score"], 0)
 
     def test_documents_vectors_and_citation_provenance_survive_restart(self):
         text = "# Règlement\nLes échanges sont possibles pendant trente jours. 東京🙂"
@@ -120,6 +137,34 @@ class StoreTests(unittest.TestCase):
         self.store.delete("support", "two")
         self.put("new", vector=[1, 2, 3], model="new-model")
         self.assertEqual(self.store.collection_model("support"), {"model": "new-model", "dimensions": 3})
+
+    def test_search_signature_and_chunks_use_one_snapshot_during_model_replacement(self):
+        self.put(text="Old model corpus.")
+        connection = self.store.connection
+        with Store(self.path) as writer:
+            class ReplaceBeforeChunkRead:
+                """Deterministically schedule a writer just before the vector SELECT."""
+
+                switched = False
+
+                def execute(proxy, statement, parameters=()):
+                    if not proxy.switched and "SELECT" in statement and "chunks c" in statement:
+                        proxy.switched = True
+                        writer.delete("support", "guide")
+                        writer.put("support", "New model", "New model corpus.", [[1, 0, 1]], "new-model", "guide")
+                    return connection.execute(statement, parameters)
+
+            proxy = ReplaceBeforeChunkRead()
+            self.store.connection = proxy
+            try:
+                with self.assertRaisesRegex(ValueError, "model or dimensions"):
+                    self.store.search("support", [1, 0], "test-embedding-v1")
+                self.assertTrue(proxy.switched)
+            finally:
+                self.store.connection = connection
+        hits = self.store.search("support", [1, 0, 1], "new-model")
+        self.assertEqual(hits[0]["text"], "New model corpus.")
+        self.assertAlmostEqual(hits[0]["score"], 1)
 
     def test_bad_vectors_cannot_create_or_change_a_document(self):
         self.put()

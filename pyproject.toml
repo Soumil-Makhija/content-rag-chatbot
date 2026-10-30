@@ -12,6 +12,9 @@ license = {text = "MIT"}
 authors = [{name = "Soumil Makhija"}]
 dependencies = []
 
+[project.scripts]
+content-chat = "content_chat.cli:main"
+
 [tool.setuptools.packages.find]
 include = ["content_chat*"]
 

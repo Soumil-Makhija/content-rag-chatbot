@@ -138,6 +138,7 @@ class Ollama:
             with self._opener.open(request, timeout=self.timeout) as response:
                 raw = response.read(_MAX_RESPONSE_BYTES + 1)
         except HTTPError as exc:
+            exc.close()
             if 300 <= exc.code < 400:
                 raise ModelProtocolError("Ollama redirected the request; redirects are disabled for local model access.") from exc
             if exc.code == 404:

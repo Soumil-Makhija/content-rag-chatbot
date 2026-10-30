@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Content Chat</title><link rel="stylesheet" href="/style.css"><script src="/app.js" defer></script></head>
+<body>
+<header><span class="eyebrow">YOUR DOCUMENTS · YOUR LOCAL MODELS</span><h1>Content Chat</h1><p>Ask your sources. Follow the evidence.</p></header>
+<main>
+<div id="status" role="status" aria-live="polite">Checking local models…</div>
+<label class="collection">Collection <input id="collection" value="support" pattern="[a-z][a-z0-9_-]{0,63}" maxlength="64" required><button id="load">Open collection</button></label>
+<div class="grid">
+<section aria-labelledby="library-title"><h2 id="library-title">Document library</h2><p class="muted">UTF-8 Markdown or text · up to 2 MiB each</p>
+<form id="import-form"><label>Document <input id="file" type="file" accept=".txt,.md" required></label><label>Title <input id="title" maxlength="1000" placeholder="Uses the file name"></label><label>Replace document <select id="replacement"><option value="">Add a new document</option></select></label><button type="submit">Import and embed</button></form>
+<ul id="documents"></ul></section>
+<section aria-labelledby="ask-title"><h2 id="ask-title">Ask this collection</h2><form id="ask-form"><label>Your question <textarea id="question" maxlength="4000" rows="3" required placeholder="What does the refund policy say?"></textarea></label><button type="submit">Ask sources</button></form>
+<article id="answer" aria-live="polite"><p class="muted">Answers will include passages you can inspect. Sources may not cover every question.</p></article></section>
+</div>
+<p class="footnote">Runs on this computer through Ollama. Collections keep retrieval separate; this single-user app has no accounts. Citations identify passages, and you should review whether they support the answer.</p>
+</main></body></html>
