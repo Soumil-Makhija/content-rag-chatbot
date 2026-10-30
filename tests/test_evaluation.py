@@ -5,6 +5,7 @@ evidence that a model meets the project's acceptance criteria.
 """
 
 import json
+import math
 from pathlib import Path
 import tempfile
 import unittest
@@ -21,15 +22,35 @@ class EvaluationFixtureModel:
     embedding_model = "fixture-embedding-not-a-model"
     generation_model = "fixture-generation-not-a-model"
 
+    def __init__(self):
+        self.generation_source_counts = []
+
     def health(self):
         return {"ready": True, "available_models": [self.embedding_model, self.generation_model], "missing_models": []}
 
     def embed(self, texts):
-        # Every fixture source is retrieved; this deliberately does not claim
-        # to test semantic retrieval quality.
-        return [[1.0, 0.0] for _ in texts]
+        # Hand-coded topic coordinates regress ranking/check accounting only.
+        # They are explicitly not learned embeddings or semantic-quality evidence.
+        vectors = []
+        for text in texts:
+            value = text.casefold()
+            vector = [float(any(term in value for term in terms)) for terms in (
+                ("trial", "export my workspace", "export your workspace"),
+                ("refund",),
+                ("two-factor authentication",),
+                ("notification preferences",),
+                ("keyboard shortcuts",),
+                ("file attachments",),
+                ("accessibility preferences",),
+                ("archiving projects",),
+            )]
+            if not any(vector):
+                vector[2] = 1.0
+            vectors.append(vector)
+        return vectors
 
     def generate(self, question, sources):
+        self.generation_source_counts.append(len(sources))
         text = " ".join(source["text"] for source in sources)
         refund_sources = [source for source in sources if "refund request window" in source["text"]]
         support_sources = [source for source in sources if "trial lasts 14 days" in source["text"]]
@@ -50,17 +71,75 @@ class EvaluationFixtureModel:
 
 class EvaluationHarnessTests(unittest.TestCase):
     def test_fixture_regresses_checks_and_lifecycle_without_claiming_accuracy(self):
-        report = run_evaluation(EvaluationFixtureModel())
+        model = EvaluationFixtureModel()
+        report = run_evaluation(model)
         self.assertEqual(report["status"], "checks_passed_manual_review_required", report)
         self.assertEqual(exit_code(report), 0)
         self.assertEqual(report["checks_passed"], report["checks_total"])
         self.assertEqual(len(report["cases"]), 9)
+        self.assertEqual(len(report["retrieval_cases"]), 3)
+        self.assertEqual(sum(document["chunk_count"] for document in report["imported_documents"]
+                             if document["collection"] == "support"), 8)
         self.assertIn("not an accuracy score", report["manual_review_caveat"])
         self.assertEqual(report["models"]["generation"], "fixture-generation-not-a-model")
         for case in report["cases"]:
             self.assertIn("elapsed_seconds", case)
             self.assertIn("models", case["actual"])
+            self.assertEqual(case["limit"], 2)
+        self.assertEqual(len(model.generation_source_counts), 9)
+        self.assertTrue(all(count <= 2 for count in model.generation_source_counts))
+        for case in report["retrieval_cases"]:
+            self.assertEqual(case["corpus_chunk_count"], 8)
+            self.assertGreater(case["corpus_chunk_count"], case["limit"])
+            self.assertIn("elapsed_seconds", case)
+            self.assertTrue(all(check["passed"] for check in case["checks"]))
+            self.assertTrue(all(isinstance(source["score"], float) for source in case["retrieved"]))
+            self.assertTrue(all(source["text"] for source in case["retrieved"]))
+        multi = next(case for case in report["retrieval_cases"] if case["id"] == "retrieve-multi-document")
+        self.assertEqual({source["document_id"] for source in multi["retrieved"]}, {"support", "billing"})
+        self.assertEqual([source["score"] for source in multi["retrieved"]], [1 / math.sqrt(2)] * 2)
+        all_checks = [check for case in report["retrieval_cases"] + report["cases"] for check in case["checks"]]
+        self.assertEqual(report["checks_total"], len(all_checks) + len(report["lifecycle_checks"]))
         self.assertTrue(all(check["passed"] for check in report["lifecycle_checks"]))
+
+    def test_bad_embeddings_fail_selective_retrieval_despite_expected_trial_phrase(self):
+        class ConstantEmbeddingModel(EvaluationFixtureModel):
+            def embed(self, texts):
+                return [[1.0] * 8 for _ in texts]
+
+            def generate(self, question, sources):
+                if "trial last" in question:
+                    # Deliberately supply a fact without relevant evidence. The
+                    # lexical check alone passes; retrieval must still fail.
+                    return {"supported": True, "answer": "The trial lasts 14 days.", "citations": [sources[0]["id"]]}
+                return super().generate(question, sources)
+
+        report = run_evaluation(ConstantEmbeddingModel())
+        self.assertEqual(report["status"], "failed")
+        self.assertEqual(exit_code(report), 1)
+        retrieval = next(case for case in report["retrieval_cases"] if case["id"] == "retrieve-trial")
+        required = next(check for check in retrieval["checks"] if check["name"] == "required-document:support")
+        self.assertFalse(required["passed"])
+        trial = next(case for case in report["cases"] if case["id"] == "trial")
+        self.assertTrue(next(check for check in trial["checks"] if check["name"].startswith("answer-term:"))["passed"])
+
+    def test_retrieval_checks_fail_when_corpus_fits_inside_top_k(self):
+        source = Path(__file__).resolve().parents[1] / "examples" / "evaluation.json"
+        manifest = json.loads(source.read_text())
+        manifest["documents"] = [document for document in manifest["documents"]
+                                 if document["id"] in {"support", "billing"}]
+        # An absolute source path keeps the copied manifest independent of its directory.
+        for document in manifest["documents"]:
+            if "file" in document:
+                document["file"] = str(source.parent / document["file"])
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "evaluation.json"
+            path.write_text(json.dumps(manifest))
+            report = run_evaluation(EvaluationFixtureModel(), path)
+        self.assertEqual(report["status"], "failed")
+        multi = next(case for case in report["retrieval_cases"] if case["id"] == "retrieve-multi-document")
+        self.assertFalse(next(check for check in multi["checks"] if check["name"] == "corpus-exceeds-limit")["passed"])
+        self.assertTrue(all(check["passed"] for case in report["cases"] for check in case["checks"]))
 
     def test_wrong_model_answer_fails_lexical_checks_instead_of_counting_as_quality(self):
         class WrongAnswerModel(EvaluationFixtureModel):
@@ -87,6 +166,7 @@ class EvaluationHarnessTests(unittest.TestCase):
         report = run_evaluation(MissingModel())
         self.assertEqual(report["status"], "blocked")
         self.assertEqual(report["cases"], [])
+        self.assertEqual(report["retrieval_cases"], [])
         self.assertIn("fixture-generation", report["error"]["message"])
         self.assertEqual(exit_code(report), 2)
 
@@ -100,6 +180,8 @@ class EvaluationHarnessTests(unittest.TestCase):
                 self.assertEqual(main(["--output", str(output)]), 2)
             report = json.loads(output.read_text())
             self.assertEqual(report["status"], "blocked")
+            self.assertEqual(report["cases"], [])
+            self.assertEqual(report["retrieval_cases"], [])
             self.assertEqual(report["error"]["type"], "ModelUnavailable")
             self.assertIn("No local model service", report["error"]["message"])
 

@@ -1,5 +1,6 @@
 """Deterministic orchestration tests with a fake provider, not live AI evidence."""
 
+import math
 from pathlib import Path
 import tempfile
 import unittest
@@ -55,6 +56,79 @@ class ServiceTests(unittest.TestCase):
         self.assertEqual(metadata, {"id": "faq", "title": "FAQ", "version": 1, "chunk_count": 2})
         self.assertEqual(self.store.get_document("support", "faq")["text"], text)
         self.assertEqual(self.store.collection_model("support"), {"model": "fixture-embed-v1", "dimensions": 3})
+
+    def test_large_import_batches_ordered_chunks_and_preserves_vector_mapping(self):
+        text = "".join(f"{index:06d} " for index in range(10000))
+        chunks = chunk_text(text)
+        next_ordinal = 0
+
+        def embed_batch(texts):
+            nonlocal next_ordinal
+            self.model.embedding_calls.append(list(texts))
+            vectors = [[1, ordinal + 1, 2] for ordinal in range(next_ordinal, next_ordinal + len(texts))]
+            next_ordinal += len(texts)
+            return vectors
+
+        self.model.embed = embed_batch
+        metadata = self.service.import_document("support", "Large FAQ", text, "faq")
+        self.assertEqual([len(batch) for batch in self.model.embedding_calls], [32, 32, 3])
+        self.assertEqual([chunk for batch in self.model.embedding_calls for chunk in batch], chunks)
+        self.assertEqual(metadata["chunk_count"], len(chunks))
+        hits = self.store.search("support", [1, 0, 0], self.model.embedding_model, limit=100)
+        self.assertEqual(len(hits), len(chunks))
+        for hit in hits:
+            ordinal = hit["ordinal"]
+            self.assertEqual(hit["text"], chunks[ordinal])
+            self.assertAlmostEqual(hit["score"], 1 / math.sqrt(1 + (ordinal + 1) ** 2 + 4))
+
+    def test_later_embedding_batch_failures_preserve_existing_corpus(self):
+        self.service.import_document("support", "FAQ", "Original fact.", "faq")
+        before_document = self.store.get_document("support", "faq")
+        before_documents = self.store.list_documents("support")
+        before_hits = self.store.search("support", [1, 0, 0], self.model.embedding_model)
+        text = "Replacement fact. " * 2200
+        for failure in ("unavailable", "count", "zero-vector", "mixed-dimensions", "batch-dimensions"):
+            for collection, document_id in (("support", "faq"), ("support", "new"), ("fresh", "new")):
+                with self.subTest(failure=failure, collection=collection, document_id=document_id):
+                    self.model.embedding_calls.clear()
+
+                    def embed_batch(texts):
+                        self.model.embedding_calls.append(list(texts))
+                        if len(self.model.embedding_calls) == 1:
+                            return [[1, 0, 0] for _text in texts]
+                        if failure == "unavailable":
+                            raise ModelUnavailable("Fixture failed during a later batch")
+                        if failure == "count":
+                            return []
+                        if failure == "zero-vector":
+                            return [[0, 0, 0] for _text in texts]
+                        if failure == "mixed-dimensions":
+                            return [[1, 0, 0]] + [[1, 0] for _text in texts[1:]]
+                        return [[1, 0] for _text in texts]
+
+                    self.model.embed = embed_batch
+                    error = ModelUnavailable if failure == "unavailable" else ModelProtocolError
+                    with self.assertRaises(error):
+                        self.service.import_document(collection, "Replacement FAQ", text, document_id)
+                    self.assertEqual(len(self.model.embedding_calls), 2)
+                    self.assertEqual(self.store.get_document("support", "faq"), before_document)
+                    self.assertEqual(self.store.list_documents("support"), before_documents)
+                    self.assertEqual(self.store.search("support", [1, 0, 0], self.model.embedding_model), before_hits)
+                    self.assertIsNone(self.store.get_document("support", "new"))
+                    self.assertIsNone(self.store.collection_model("fresh"))
+
+    def test_first_embedding_batch_checks_collection_dimensions_before_later_calls(self):
+        self.service.import_document("support", "FAQ", "Original fact.", "faq")
+        before_document = self.store.get_document("support", "faq")
+        before_hits = self.store.search("support", [1, 0, 0], self.model.embedding_model)
+        self.model.embedding_calls.clear()
+        self.model.embedding_result = [[1, 0] for _index in range(32)]
+        text = "Replacement fact. " * 2200
+        with self.assertRaisesRegex(ValueError, "dimensions differ"):
+            self.service.import_document("support", "Replacement FAQ", text, "faq")
+        self.assertEqual(self.model.embedding_calls, [chunk_text(text)[:32]])
+        self.assertEqual(self.store.get_document("support", "faq"), before_document)
+        self.assertEqual(self.store.search("support", [1, 0, 0], self.model.embedding_model), before_hits)
 
     def test_answer_returns_complete_resolvable_citation_and_model_names(self):
         self.service.import_document("support", "Shipping", "Atlas ships on Tuesday.", "shipping")

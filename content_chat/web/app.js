@@ -2,6 +2,7 @@
 const $ = id => document.getElementById(id);
 let busy = false;
 let openedCollection = null;
+let collectionRevision = 0;
 function collection() {
   const value = $('collection').value;
   if (!/^[a-z][a-z0-9_-]{0,63}$/.test(value)) throw new Error('Use a lowercase collection name starting with a letter (1–64 characters).');
@@ -9,8 +10,17 @@ function collection() {
 }
 function selectedCollection() {
   const value = collection();
-  if (value !== openedCollection) throw new Error('Open this collection before importing or asking.');
+  if (value !== openedCollection) throw new Error('Open this collection before importing, deleting, or asking.');
   return value;
+}
+function clearCollectionView() {
+  openedCollection = null;
+  collectionRevision += 1;
+  $('documents').replaceChildren();
+  $('replacement').replaceChildren(node('option', 'Add a new document'));
+  $('replacement').firstChild.value = '';
+  $('answer').replaceChildren();
+  $('status').textContent = 'Open this collection before importing, deleting, or asking.';
 }
 function endpoint(resource, group = selectedCollection()) { return `/api/collections/${encodeURIComponent(group)}/${resource}`; }
 async function api(path, method = 'GET', data) {
@@ -37,7 +47,9 @@ async function task(action) {
 }
 async function library() {
   const group = collection();
+  const revision = collectionRevision;
   const documents = await api(endpoint('documents', group));
+  if (revision !== collectionRevision || group !== collection()) throw new Error('Collection changed. Open this collection before continuing.');
   openedCollection = group;
   $('documents').replaceChildren(); $('replacement').replaceChildren(node('option', 'Add a new document')); $('replacement').firstChild.value = '';
   if (!documents.length) $('documents').append(node('li', 'This collection is empty.', 'muted'));
@@ -45,11 +57,18 @@ async function library() {
     const item = node('li', `${doc.title} · v${doc.version} · ${doc.chunk_count} chunks`);
     const link = node('a', 'Inspect'); link.href = endpoint(`documents/${encodeURIComponent(doc.id)}`, group); link.target = '_blank'; link.rel = 'noopener'; item.append(link);
     const remove = node('button', 'Delete'); remove.type = 'button';
-    remove.addEventListener('click', () => { if (window.confirm(`Delete ${doc.title} and its indexed passages?`)) task(async () => { await api(endpoint(`documents/${encodeURIComponent(doc.id)}`, group), 'DELETE'); $('answer').replaceChildren(node('p', 'Document removed. Ask again using the current sources.', 'muted')); await library(); }); });
+    remove.addEventListener('click', () => task(async () => {
+      const selected = selectedCollection();
+      if (selected !== group) throw new Error('This document belongs to a previously opened collection. Open its collection before deleting.');
+      if (!window.confirm(`Delete ${doc.title} and its indexed passages?`)) return;
+      await api(endpoint(`documents/${encodeURIComponent(doc.id)}`, selected), 'DELETE');
+      $('answer').replaceChildren(node('p', 'Document removed. Ask again using the current sources.', 'muted')); await library();
+    }));
     item.append(remove); $('documents').append(item);
     const option = node('option', `${doc.title} (v${doc.version})`); option.value = doc.id; $('replacement').append(option);
   }
 }
+$('collection').addEventListener('input', clearCollectionView);
 $('load').addEventListener('click', () => task(async () => { $('answer').replaceChildren(node('p', 'Collection opened. Ask a question using these documents.', 'muted')); await library(); }));
 $('import-form').addEventListener('submit', event => { event.preventDefault(); task(async () => {
   const file = $('file').files[0];

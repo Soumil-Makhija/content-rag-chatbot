@@ -7,6 +7,8 @@ from .store import chunk_text
 
 MAX_DOCUMENT_BYTES = 2 * 1024 * 1024
 MAX_QUESTION_CHARS = 4000
+# Bound each provider request and its vector response even for large documents.
+EMBEDDING_BATCH_SIZE = 32
 
 
 def _identifier(value: str, name: str) -> str:
@@ -59,7 +61,10 @@ class Service:
     def import_document(
         self, collection: str, title: str, text: str, document_id: str | None = None
     ) -> dict:
-        """Embed all chunks before inserting or atomically replacing a document."""
+        """Embed in batches of 32, then atomically insert or replace a document.
+
+        No document or collection state is written until every batch succeeds.
+        """
         signature = self._signature(collection)
         title = _identifier(title, "title")
         if document_id is not None:
@@ -77,9 +82,18 @@ class Service:
         chunks = chunk_text(text, size=1200, overlap=150)
         if not chunks:
             raise ValueError("document text cannot be blank")
-        vectors = validate_embeddings(self.model.embed(chunks), len(chunks))
-        if signature and signature["dimensions"] != len(vectors[0]):
-            raise ValueError("Embedding dimensions differ from this collection; select the original embedding model.")
+        vectors = []
+        dimensions = None
+        for start in range(0, len(chunks), EMBEDDING_BATCH_SIZE):
+            batch = chunks[start:start + EMBEDDING_BATCH_SIZE]
+            embedded = validate_embeddings(self.model.embed(batch), len(batch))
+            batch_dimensions = len(embedded[0])
+            if dimensions is not None and batch_dimensions != dimensions:
+                raise ModelProtocolError("Ollama returned embeddings with inconsistent dimensions across batches.")
+            if signature and signature["dimensions"] != batch_dimensions:
+                raise ValueError("Embedding dimensions differ from this collection; select the original embedding model.")
+            dimensions = batch_dimensions
+            vectors.extend(embedded)
         return self.store.put(
             collection, title, text, vectors, self.model.embedding_model, document_id=document_id
         )

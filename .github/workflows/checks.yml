@@ -19,3 +19,4 @@ jobs:
       - run: content-chat --help
       - run: python tools/evaluate_live.py --help
       - run: node --check content_chat/web/app.js
+      - run: node --test tests/web-state.test.js

@@ -1,50 +1,68 @@
 {
-  "description": "Synthetic Acorn Workspace corpus. Automated checks cover expected phrases, citations, abstention, and collection boundaries; manual factual review remains necessary.",
+  "description": "Synthetic Acorn Workspace corpus with six unrelated support documents. Small top-k checks test selective retrieval; answer cases retrieve at most two passages. Automated checks cover expected phrases, citations, abstention, and collection boundaries; manual factual review remains necessary.",
   "documents": [
     {"collection": "support", "id": "support", "title": "Acorn Workspace Support", "file": "support.md"},
     {"collection": "support", "id": "billing", "title": "Acorn Workspace Billing", "file": "billing.md"},
+    {"collection": "support", "id": "account-security", "title": "Acorn Account Security", "text": "Fictional account security guide: Two-factor authentication is configured under Account, Security. Administrators can require an authenticator app for all members. Keep recovery codes in a safe place; support cannot recover a lost authenticator for you."},
+    {"collection": "support", "id": "notifications", "title": "Acorn Notification Preferences", "text": "Fictional notification preferences guide: Choose which project events appear in the activity feed under Preferences, Notifications. You can mute a project while retaining direct mentions. Quiet hours suppress desktop alerts until the selected morning time."},
+    {"collection": "support", "id": "keyboard", "title": "Acorn Keyboard Shortcuts", "text": "Fictional keyboard shortcuts guide: Press the question-mark key to display available keyboard shortcuts. Use the arrow keys to move between cards and Enter to open the selected card. These shortcuts work when the focus is outside an editable text field."},
+    {"collection": "support", "id": "attachments", "title": "Acorn File Attachments", "text": "Fictional file attachments guide: Drag an image onto a card to attach it. Images can have an optional caption and may be reordered by a project editor. Removing a card attachment does not remove the original file from your computer."},
+    {"collection": "support", "id": "accessibility", "title": "Acorn Accessibility Preferences", "text": "Fictional accessibility preferences guide: Select high contrast under Preferences, Appearance to increase visual contrast. Reduced motion follows the operating system setting. All card actions are available from the keyboard menu."},
+    {"collection": "support", "id": "archive", "title": "Acorn Project Archiving", "text": "Fictional archiving projects guide: Archive an inactive project from its project menu to hide it from the active list. Project editors can restore archived projects from the archive view. Archiving preserves cards and comments."},
     {"collection": "enterprise", "id": "billing", "title": "Acorn Enterprise Billing", "text": "Fictional enterprise contract: Enterprise annual subscriptions have a 90-day refund request window from purchase. This enterprise policy applies only to the enterprise collection."}
+  ],
+  "retrieval_cases": [
+    {"id": "retrieve-trial", "collection": "support", "question": "How many days does the Acorn Workspace trial last?", "limit": 1, "required_document_ids": ["support"]},
+    {"id": "retrieve-refund", "collection": "support", "question": "What is the refund request window for a standard annual subscription?", "limit": 1, "required_document_ids": ["billing"]},
+    {"id": "retrieve-multi-document", "collection": "support", "question": "How do I export my workspace, and what is the standard annual subscription refund request window?", "limit": 2, "required_document_ids": ["support", "billing"]}
   ],
   "cases": [
     {
       "id": "trial",
       "collection": "support",
+      "limit": 2,
       "question": "How many days does the Acorn Workspace trial last?",
       "expected": {"supported": true, "answer_terms": [["14", "fourteen"]], "citation_titles": ["Acorn Workspace Support"]}
     },
     {
       "id": "standard-refund",
       "collection": "support",
+      "limit": 2,
       "question": "What is the refund request window for a standard annual subscription?",
       "expected": {"supported": true, "answer_terms": [["30", "thirty"]], "forbidden_terms": ["90", "ninety"], "citation_titles": ["Acorn Workspace Billing"]}
     },
     {
       "id": "multi-document",
       "collection": "support",
+      "limit": 2,
       "question": "How do I export my workspace, and what is the standard annual subscription refund request window?",
       "expected": {"supported": true, "answer_terms": [["settings"], ["export"], ["json", "markdown"], ["30", "thirty"]], "citation_titles": ["Acorn Workspace Support", "Acorn Workspace Billing"]}
     },
     {
       "id": "unsupported-related",
       "collection": "support",
+      "limit": 2,
       "question": "Exactly how many business days will my bank take to post an approved refund?",
       "expected": {"supported": false, "answer_terms": [], "citation_titles": []}
     },
     {
       "id": "unsupported-unrelated",
       "collection": "support",
+      "limit": 2,
       "question": "What is the surface temperature of Saturn?",
       "expected": {"supported": false, "answer_terms": [], "citation_titles": []}
     },
     {
       "id": "enterprise-refund",
       "collection": "enterprise",
+      "limit": 2,
       "question": "What is the enterprise annual subscription refund request window?",
       "expected": {"supported": true, "answer_terms": [["90", "ninety"]], "forbidden_terms": ["30", "thirty"], "citation_titles": ["Acorn Enterprise Billing"]}
     }
   ],
   "lifecycle": {
     "collection": "support",
+    "limit": 2,
     "document_id": "billing",
     "title": "Acorn Workspace Billing",
     "replacement_text": "Fictional revised standard billing policy: The standard annual subscription refund request window is now 45 days from purchase. This replaces the previous policy. Requests go to billing@acorn.example.",

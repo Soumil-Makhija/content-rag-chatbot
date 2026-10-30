@@ -29,7 +29,7 @@ from content_chat.store import Store  # noqa: E402
 
 
 DISCLAIMER = (
-    "Automated checks inspect lexical answer terms, citation titles and resolution, "
+    "Automated checks inspect selective top-k retrieval, lexical answer terms, citation titles and resolution, "
     "abstention, and corpus lifecycle. They are not an accuracy score or proof of "
     "factual grounding. Manually review every answer and its cited passages."
 )
@@ -85,7 +85,7 @@ def run_evaluation(model, manifest_path: Path | None = None) -> dict:
         "schema_version": 1,
         "started_at": datetime.now(timezone.utc).isoformat(),
         "status": "failed",
-        "check_scope": "lexical and structural checks; manual factual review required",
+        "check_scope": "selective top-k retrieval, lexical and structural checks; manual factual review required",
         "manual_review_caveat": DISCLAIMER,
         "models": {
             "provider": "ollama",
@@ -94,6 +94,7 @@ def run_evaluation(model, manifest_path: Path | None = None) -> dict:
             "generation": getattr(model, "generation_model", None),
         },
         "cases": [],
+        "retrieval_cases": [],
         "lifecycle_checks": [],
     }
 
@@ -103,10 +104,11 @@ def run_evaluation(model, manifest_path: Path | None = None) -> dict:
     def ask_case(service: Service, store: Store, case: dict) -> dict:
         case_started = time.perf_counter()
         result = {key: case[key] for key in ("id", "collection", "question", "expected")}
+        result["limit"] = case.get("limit", 5)
         # Append before the request so a model failure leaves a useful record.
         report["cases"].append(result)
         try:
-            actual = service.ask(case["collection"], case["question"])
+            actual = service.ask(case["collection"], case["question"], limit=result["limit"])
             result["actual"] = actual
             result["checks"] = check_answer(actual, case["expected"], case["collection"], store)
         except ModelUnavailable as exc:
@@ -116,6 +118,46 @@ def run_evaluation(model, manifest_path: Path | None = None) -> dict:
         except Exception as exc:
             result["error"] = {"type": type(exc).__name__, "message": str(exc)}
             result["checks"] = [{"name": "execution", "passed": False, "detail": str(exc)}]
+        finally:
+            result["elapsed_seconds"] = round(time.perf_counter() - case_started, 6)
+        return result
+
+    def retrieval_case(service: Service, store: Store, case: dict) -> dict:
+        case_started = time.perf_counter()
+        result = {key: case[key] for key in ("id", "collection", "question", "limit")}
+        result["expected"] = {"required_document_ids": case["required_document_ids"]}
+        result["checks"] = []
+        report["retrieval_cases"].append(result)
+
+        def check(name: str, passed: bool, detail: str) -> None:
+            result["checks"].append({"name": name, "passed": bool(passed), "detail": detail})
+
+        try:
+            count = sum(document["chunk_count"] for document in store.list_documents(case["collection"]))
+            result["corpus_chunk_count"] = count
+            check("corpus-exceeds-limit", count > case["limit"],
+                  "The collection must contain more passages than top-k so retrieval cannot return the entire corpus.")
+            retrieved = service.search(case["collection"], case["question"], limit=case["limit"])
+            # Keep exact cosine scores and source text for inspection; rounded
+            # timings do not alter the reported ranking or scores.
+            result["retrieved"] = retrieved
+            check("retrieval-limit", len(retrieved) <= case["limit"], "Retrieved passages must respect top-k.")
+            found = {source["document_id"] for source in retrieved}
+            for document_id in case["required_document_ids"]:
+                check("required-document:" + document_id, document_id in found,
+                      "An expected supporting document must appear in the selected top-k passages.")
+            for index, source in enumerate(retrieved):
+                resolved = store.source(case["collection"], source["id"])
+                check(f"retrieved-source-resolves:{index}", resolved is not None and all(
+                    resolved.get(key) == source.get(key) for key in ("document_id", "title", "version", "ordinal", "text")
+                ), "Retrieved passages must resolve unchanged inside the selected collection.")
+        except ModelUnavailable as exc:
+            result["error"] = {"type": type(exc).__name__, "message": str(exc)}
+            check("model-call", False, str(exc))
+            raise
+        except Exception as exc:
+            result["error"] = {"type": type(exc).__name__, "message": str(exc)}
+            check("execution", False, str(exc))
         finally:
             result["elapsed_seconds"] = round(time.perf_counter() - case_started, 6)
         return result
@@ -148,6 +190,8 @@ def run_evaluation(model, manifest_path: Path | None = None) -> dict:
                 lifecycle("restart-persists-documents", all(
                     store.get_document(document["collection"], document["id"]) is not None for document in imported
                 ), "The vector store was closed and reopened before questions.")
+                for case in manifest["retrieval_cases"]:
+                    retrieval_case(service, store, case)
                 for case in manifest["cases"]:
                     ask_case(service, store, case)
 
@@ -163,7 +207,7 @@ def run_evaluation(model, manifest_path: Path | None = None) -> dict:
                           "Citations from the replaced billing document must stop resolving.")
                 updated_case = ask_case(service, store, {
                     "id": "updated-refund", "collection": collection, "question": change["question"],
-                    "expected": change["updated_expected"],
+                    "limit": change["limit"], "expected": change["updated_expected"],
                 })
                 new_ids = [cite["id"] for cite in updated_case.get("actual", {}).get("citations", [])
                            if cite.get("document_id") == document_id]
@@ -175,13 +219,14 @@ def run_evaluation(model, manifest_path: Path | None = None) -> dict:
                           "Deleted-document citations no longer resolve.")
                 ask_case(service, store, {
                     "id": "deleted-refund", "collection": collection, "question": change["question"],
+                    "limit": change["limit"],
                     "expected": {"supported": False, "answer_terms": [], "citation_titles": []},
                 })
                 # The other collection uses the same document ID; deleting or
                 # updating support must leave its original 90-day policy intact.
                 enterprise_case = next(case for case in manifest["cases"] if case["id"] == "enterprise-refund")
                 ask_case(service, store, {**enterprise_case, "id": "enterprise-after-support-delete"})
-        all_checks = [check for case in report["cases"] for check in case["checks"]] + report["lifecycle_checks"]
+        all_checks = [check for case in report["retrieval_cases"] + report["cases"] for check in case["checks"]] + report["lifecycle_checks"]
         report["checks_passed"] = sum(check["passed"] for check in all_checks)
         report["checks_total"] = len(all_checks)
         report["status"] = "checks_passed_manual_review_required" if all(check["passed"] for check in all_checks) else "failed"
