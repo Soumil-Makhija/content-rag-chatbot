@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "content-rag-chatbot"
+version = "0.1.0"
+description = "Local document chatbot with persistent vector retrieval and source citations"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [{name = "Soumil Makhija"}]
+dependencies = []
+
+[tool.setuptools.packages.find]
+include = ["content_chat*"]
+
+[tool.setuptools.package-data]
+content_chat = ["web/*"]
