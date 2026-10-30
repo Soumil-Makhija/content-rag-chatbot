@@ -160,6 +160,12 @@ class ConfigurationTests(unittest.TestCase):
             with self.subTest(kwargs=kwargs), self.assertRaises(ValueError):
                 Ollama(**kwargs)
 
+    def test_obvious_cloud_models_are_rejected_for_both_roles(self):
+        for role in ("embedding_model", "generation_model"):
+            for name in ("example:cloud", "example:120b-cloud", "EXAMPLE:CLOUD", " example-CLOUD "):
+                with self.subTest(role=role, name=name), self.assertRaisesRegex(ValueError, "installed local model"):
+                    Ollama(**{role: name})
+
     def test_very_large_integer_embedding_is_rejected(self):
         with self.assertRaises(ModelProtocolError):
             validate_embeddings([[10 ** 400]], 1)

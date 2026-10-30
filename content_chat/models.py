@@ -87,7 +87,9 @@ def validate_embeddings(vectors: object, count: int) -> list[list[float]]:
 class Ollama:
     """Use already-installed Ollama models over a loopback-only HTTP API.
 
-    This client never pulls models or contacts a hosted model provider.
+    This client never pulls models and sends requests only to loopback. The
+    operator must disable cloud features on the server; local aliases and
+    server-side proxies cannot be verified by this client.
     """
 
     def __init__(
@@ -117,6 +119,9 @@ class Ollama:
             raise ValueError("Choose a nonempty embedding model name.")
         if not isinstance(generation_model, str) or not generation_model.strip():
             raise ValueError("Choose a nonempty generation model name.")
+        for model_name in (embedding_model, generation_model):
+            if model_name.strip().casefold().endswith((":cloud", "-cloud")):
+                raise ValueError("Choose an installed local model; cloud model names are not allowed.")
         if isinstance(timeout, bool) or not isinstance(timeout, (int, float)) or not math.isfinite(timeout) or timeout <= 0:
             raise ValueError("Model timeout must be a positive finite number of seconds.")
         self.base_url = urlunsplit((parsed.scheme, parsed.netloc, "", "", ""))
