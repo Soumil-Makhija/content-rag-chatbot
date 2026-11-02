@@ -1,0 +1,992 @@
+{
+  "schema_version": 1,
+  "started_at": "2026-11-02T01:53:22.240933+00:00",
+  "status": "failed",
+  "check_scope": "selective top-k retrieval, lexical and structural checks; manual factual review required",
+  "manual_review_caveat": "Automated checks inspect selective top-k retrieval, lexical answer terms, citation titles and resolution, abstention, and corpus lifecycle. They are not an accuracy score or proof of factual grounding. Manually review every answer and its cited passages.",
+  "models": {
+    "provider": "ollama",
+    "url": "http://127.0.0.1:11434",
+    "embedding": "nomic-embed-text",
+    "generation": "qwen2.5:1.5b"
+  },
+  "cases": [
+    {
+      "id": "trial",
+      "collection": "support",
+      "question": "How many days does the Acorn Workspace trial last?",
+      "expected": {
+        "supported": true,
+        "answer_terms": [
+          [
+            "14",
+            "fourteen"
+          ]
+        ],
+        "citation_titles": [
+          "Acorn Workspace Support"
+        ]
+      },
+      "limit": 2,
+      "actual": {
+        "supported": true,
+        "answer": "The Acorn Workspace trial lasts 14 days.",
+        "citations": [
+          {
+            "id": "bcfbcaa0e6504fa8bf20e8e4a0fd1d8f",
+            "document_id": "support",
+            "title": "Acorn Workspace Support",
+            "version": 1,
+            "ordinal": 0,
+            "text": "# Acorn Workspace Support\n\nThis is fictional support content for repeatable evaluation, not a real service policy.\n\nThe Acorn Workspace trial lasts 14 days. No credit card is required to start the trial.\n\nSupport is available Monday through Friday, from 09:00 to 17:00 in the America/Vancouver time zone.\n\nTo export your workspace, open Settings, choose Export, and select JSON or Markdown. Exported files are downloaded to your computer.\n\nThese instructions describe the standard service. Enterprise contracts have separate terms and are not part of this support collection.",
+            "score": 0.808383857697764,
+            "collection": "support"
+          },
+          {
+            "id": "3dfdd47f9f3642a0bd3c18050a24a733",
+            "document_id": "billing",
+            "title": "Acorn Workspace Billing",
+            "version": 1,
+            "ordinal": 0,
+            "text": "# Acorn Workspace Billing\n\nThis is fictional billing content for repeatable evaluation, not a real service policy.\n\nStandard annual subscriptions have a 30-day refund request window, measured from the original purchase date. Send a refund request to billing@acorn.example and include the purchase receipt.\n\nThis document does not specify how long banks take to post an approved refund, or what happens to refund requests after the standard request window expires.\n\nBilling records and workspace content are separate. Export instructions are in the Acorn Workspace Support document.",
+            "score": 0.7099504607592644,
+            "collection": "support"
+          }
+        ],
+        "models": {
+          "embedding": "nomic-embed-text",
+          "generation": "qwen2.5:1.5b"
+        }
+      },
+      "checks": [
+        {
+          "name": "support-decision",
+          "passed": true,
+          "detail": "Expected supported=True."
+        },
+        {
+          "name": "answer-present",
+          "passed": true,
+          "detail": "Answer must be nonempty text."
+        },
+        {
+          "name": "answer-term:14|fourteen",
+          "passed": true,
+          "detail": "At least one expected phrase must appear; this is only a lexical check."
+        },
+        {
+          "name": "citation-title:Acorn Workspace Support",
+          "passed": true,
+          "detail": "Expected document must be cited."
+        },
+        {
+          "name": "citation-resolves:0",
+          "passed": true,
+          "detail": "Citation must resolve to the stored passage in this collection."
+        },
+        {
+          "name": "citation-collection:0",
+          "passed": true,
+          "detail": "Citation must remain inside the requested collection."
+        },
+        {
+          "name": "citation-resolves:1",
+          "passed": true,
+          "detail": "Citation must resolve to the stored passage in this collection."
+        },
+        {
+          "name": "citation-collection:1",
+          "passed": true,
+          "detail": "Citation must remain inside the requested collection."
+        }
+      ],
+      "elapsed_seconds": 5.036915
+    },
+    {
+      "id": "standard-refund",
+      "collection": "support",
+      "question": "What is the refund request window for a standard annual subscription?",
+      "expected": {
+        "supported": true,
+        "answer_terms": [
+          [
+            "30",
+            "thirty"
+          ]
+        ],
+        "forbidden_terms": [
+          "90",
+          "ninety"
+        ],
+        "citation_titles": [
+          "Acorn Workspace Billing"
+        ]
+      },
+      "limit": 2,
+      "actual": {
+        "supported": true,
+        "answer": "The refund request window for a standard annual subscription is 30 days, measured from the original purchase date.",
+        "citations": [
+          {
+            "id": "3dfdd47f9f3642a0bd3c18050a24a733",
+            "document_id": "billing",
+            "title": "Acorn Workspace Billing",
+            "version": 1,
+            "ordinal": 0,
+            "text": "# Acorn Workspace Billing\n\nThis is fictional billing content for repeatable evaluation, not a real service policy.\n\nStandard annual subscriptions have a 30-day refund request window, measured from the original purchase date. Send a refund request to billing@acorn.example and include the purchase receipt.\n\nThis document does not specify how long banks take to post an approved refund, or what happens to refund requests after the standard request window expires.\n\nBilling records and workspace content are separate. Export instructions are in the Acorn Workspace Support document.",
+            "score": 0.7402357440051293,
+            "collection": "support"
+          }
+        ],
+        "models": {
+          "embedding": "nomic-embed-text",
+          "generation": "qwen2.5:1.5b"
+        }
+      },
+      "checks": [
+        {
+          "name": "support-decision",
+          "passed": true,
+          "detail": "Expected supported=True."
+        },
+        {
+          "name": "answer-present",
+          "passed": true,
+          "detail": "Answer must be nonempty text."
+        },
+        {
+          "name": "answer-term:30|thirty",
+          "passed": true,
+          "detail": "At least one expected phrase must appear; this is only a lexical check."
+        },
+        {
+          "name": "forbidden-term:90",
+          "passed": true,
+          "detail": "A conflicting policy value must not appear."
+        },
+        {
+          "name": "forbidden-term:ninety",
+          "passed": true,
+          "detail": "A conflicting policy value must not appear."
+        },
+        {
+          "name": "citation-title:Acorn Workspace Billing",
+          "passed": true,
+          "detail": "Expected document must be cited."
+        },
+        {
+          "name": "citation-resolves:0",
+          "passed": true,
+          "detail": "Citation must resolve to the stored passage in this collection."
+        },
+        {
+          "name": "citation-collection:0",
+          "passed": true,
+          "detail": "Citation must remain inside the requested collection."
+        }
+      ],
+      "elapsed_seconds": 3.640732
+    },
+    {
+      "id": "multi-document",
+      "collection": "support",
+      "question": "How do I export my workspace, and what is the standard annual subscription refund request window?",
+      "expected": {
+        "supported": true,
+        "answer_terms": [
+          [
+            "settings"
+          ],
+          [
+            "export"
+          ],
+          [
+            "json",
+            "markdown"
+          ],
+          [
+            "30",
+            "thirty"
+          ]
+        ],
+        "citation_titles": [
+          "Acorn Workspace Support",
+          "Acorn Workspace Billing"
+        ]
+      },
+      "limit": 2,
+      "actual": {
+        "supported": true,
+        "answer": "To export your workspace, open Settings, choose Export, and select JSON or Markdown. Exported files are downloaded to your computer.",
+        "citations": [
+          {
+            "id": "3dfdd47f9f3642a0bd3c18050a24a733",
+            "document_id": "billing",
+            "title": "Acorn Workspace Billing",
+            "version": 1,
+            "ordinal": 0,
+            "text": "# Acorn Workspace Billing\n\nThis is fictional billing content for repeatable evaluation, not a real service policy.\n\nStandard annual subscriptions have a 30-day refund request window, measured from the original purchase date. Send a refund request to billing@acorn.example and include the purchase receipt.\n\nThis document does not specify how long banks take to post an approved refund, or what happens to refund requests after the standard request window expires.\n\nBilling records and workspace content are separate. Export instructions are in the Acorn Workspace Support document.",
+            "score": 0.749993382088613,
+            "collection": "support"
+          },
+          {
+            "id": "bcfbcaa0e6504fa8bf20e8e4a0fd1d8f",
+            "document_id": "support",
+            "title": "Acorn Workspace Support",
+            "version": 1,
+            "ordinal": 0,
+            "text": "# Acorn Workspace Support\n\nThis is fictional support content for repeatable evaluation, not a real service policy.\n\nThe Acorn Workspace trial lasts 14 days. No credit card is required to start the trial.\n\nSupport is available Monday through Friday, from 09:00 to 17:00 in the America/Vancouver time zone.\n\nTo export your workspace, open Settings, choose Export, and select JSON or Markdown. Exported files are downloaded to your computer.\n\nThese instructions describe the standard service. Enterprise contracts have separate terms and are not part of this support collection.",
+            "score": 0.6734869810084058,
+            "collection": "support"
+          }
+        ],
+        "models": {
+          "embedding": "nomic-embed-text",
+          "generation": "qwen2.5:1.5b"
+        }
+      },
+      "checks": [
+        {
+          "name": "support-decision",
+          "passed": true,
+          "detail": "Expected supported=True."
+        },
+        {
+          "name": "answer-present",
+          "passed": true,
+          "detail": "Answer must be nonempty text."
+        },
+        {
+          "name": "answer-term:settings",
+          "passed": true,
+          "detail": "At least one expected phrase must appear; this is only a lexical check."
+        },
+        {
+          "name": "answer-term:export",
+          "passed": true,
+          "detail": "At least one expected phrase must appear; this is only a lexical check."
+        },
+        {
+          "name": "answer-term:json|markdown",
+          "passed": true,
+          "detail": "At least one expected phrase must appear; this is only a lexical check."
+        },
+        {
+          "name": "answer-term:30|thirty",
+          "passed": false,
+          "detail": "At least one expected phrase must appear; this is only a lexical check."
+        },
+        {
+          "name": "citation-title:Acorn Workspace Support",
+          "passed": true,
+          "detail": "Expected document must be cited."
+        },
+        {
+          "name": "citation-title:Acorn Workspace Billing",
+          "passed": true,
+          "detail": "Expected document must be cited."
+        },
+        {
+          "name": "citation-resolves:0",
+          "passed": true,
+          "detail": "Citation must resolve to the stored passage in this collection."
+        },
+        {
+          "name": "citation-collection:0",
+          "passed": true,
+          "detail": "Citation must remain inside the requested collection."
+        },
+        {
+          "name": "citation-resolves:1",
+          "passed": true,
+          "detail": "Citation must resolve to the stored passage in this collection."
+        },
+        {
+          "name": "citation-collection:1",
+          "passed": true,
+          "detail": "Citation must remain inside the requested collection."
+        }
+      ],
+      "elapsed_seconds": 4.113524
+    },
+    {
+      "id": "unsupported-related",
+      "collection": "support",
+      "question": "Exactly how many business days will my bank take to post an approved refund?",
+      "expected": {
+        "supported": false,
+        "answer_terms": [],
+        "citation_titles": []
+      },
+      "limit": 2,
+      "actual": {
+        "supported": false,
+        "answer": "I don't have enough information in this collection to answer that question.",
+        "citations": [],
+        "models": {
+          "embedding": "nomic-embed-text",
+          "generation": "qwen2.5:1.5b"
+        }
+      },
+      "checks": [
+        {
+          "name": "support-decision",
+          "passed": true,
+          "detail": "Expected supported=False."
+        },
+        {
+          "name": "answer-present",
+          "passed": true,
+          "detail": "Answer must be nonempty text."
+        },
+        {
+          "name": "abstention-has-no-citations",
+          "passed": true,
+          "detail": "Unsupported answers must not cite evidence for an answer."
+        }
+      ],
+      "elapsed_seconds": 2.294276
+    },
+    {
+      "id": "unsupported-unrelated",
+      "collection": "support",
+      "question": "What is the surface temperature of Saturn?",
+      "expected": {
+        "supported": false,
+        "answer_terms": [],
+        "citation_titles": []
+      },
+      "limit": 2,
+      "actual": {
+        "supported": false,
+        "answer": "I don't have enough information in this collection to answer that question.",
+        "citations": [],
+        "models": {
+          "embedding": "nomic-embed-text",
+          "generation": "qwen2.5:1.5b"
+        }
+      },
+      "checks": [
+        {
+          "name": "support-decision",
+          "passed": true,
+          "detail": "Expected supported=False."
+        },
+        {
+          "name": "answer-present",
+          "passed": true,
+          "detail": "Answer must be nonempty text."
+        },
+        {
+          "name": "abstention-has-no-citations",
+          "passed": true,
+          "detail": "Unsupported answers must not cite evidence for an answer."
+        }
+      ],
+      "elapsed_seconds": 1.013422
+    },
+    {
+      "id": "enterprise-refund",
+      "collection": "enterprise",
+      "question": "What is the enterprise annual subscription refund request window?",
+      "expected": {
+        "supported": true,
+        "answer_terms": [
+          [
+            "90",
+            "ninety"
+          ]
+        ],
+        "forbidden_terms": [
+          "30",
+          "thirty"
+        ],
+        "citation_titles": [
+          "Acorn Enterprise Billing"
+        ]
+      },
+      "limit": 2,
+      "actual": {
+        "supported": true,
+        "answer": "The enterprise annual subscription refund request window is 90 days from purchase.",
+        "citations": [
+          {
+            "id": "db50bbc368a9400cae1b506e961622ce",
+            "document_id": "billing",
+            "title": "Acorn Enterprise Billing",
+            "version": 1,
+            "ordinal": 0,
+            "text": "Fictional enterprise contract: Enterprise annual subscriptions have a 90-day refund request window from purchase. This enterprise policy applies only to the enterprise collection.",
+            "score": 0.823652419115522,
+            "collection": "enterprise"
+          }
+        ],
+        "models": {
+          "embedding": "nomic-embed-text",
+          "generation": "qwen2.5:1.5b"
+        }
+      },
+      "checks": [
+        {
+          "name": "support-decision",
+          "passed": true,
+          "detail": "Expected supported=True."
+        },
+        {
+          "name": "answer-present",
+          "passed": true,
+          "detail": "Answer must be nonempty text."
+        },
+        {
+          "name": "answer-term:90|ninety",
+          "passed": true,
+          "detail": "At least one expected phrase must appear; this is only a lexical check."
+        },
+        {
+          "name": "forbidden-term:30",
+          "passed": true,
+          "detail": "A conflicting policy value must not appear."
+        },
+        {
+          "name": "forbidden-term:thirty",
+          "passed": true,
+          "detail": "A conflicting policy value must not appear."
+        },
+        {
+          "name": "citation-title:Acorn Enterprise Billing",
+          "passed": true,
+          "detail": "Expected document must be cited."
+        },
+        {
+          "name": "citation-resolves:0",
+          "passed": true,
+          "detail": "Citation must resolve to the stored passage in this collection."
+        },
+        {
+          "name": "citation-collection:0",
+          "passed": true,
+          "detail": "Citation must remain inside the requested collection."
+        }
+      ],
+      "elapsed_seconds": 1.318603
+    },
+    {
+      "id": "updated-refund",
+      "collection": "support",
+      "question": "What is the refund request window for a standard annual subscription?",
+      "expected": {
+        "supported": true,
+        "answer_terms": [
+          [
+            "45",
+            "forty-five",
+            "forty five"
+          ]
+        ],
+        "forbidden_terms": [
+          "30",
+          "thirty",
+          "90",
+          "ninety"
+        ],
+        "citation_titles": [
+          "Acorn Workspace Billing"
+        ]
+      },
+      "limit": 2,
+      "actual": {
+        "supported": true,
+        "answer": "The refund request window for a standard annual subscription is now 45 days from purchase.",
+        "citations": [
+          {
+            "id": "ebb3ef0ce1fa4980a277de81390b62f3",
+            "document_id": "billing",
+            "title": "Acorn Workspace Billing",
+            "version": 2,
+            "ordinal": 0,
+            "text": "Fictional revised standard billing policy: The standard annual subscription refund request window is now 45 days from purchase. This replaces the previous policy. Requests go to billing@acorn.example.",
+            "score": 0.814860963691744,
+            "collection": "support"
+          },
+          {
+            "id": "bcfbcaa0e6504fa8bf20e8e4a0fd1d8f",
+            "document_id": "support",
+            "title": "Acorn Workspace Support",
+            "version": 1,
+            "ordinal": 0,
+            "text": "# Acorn Workspace Support\n\nThis is fictional support content for repeatable evaluation, not a real service policy.\n\nThe Acorn Workspace trial lasts 14 days. No credit card is required to start the trial.\n\nSupport is available Monday through Friday, from 09:00 to 17:00 in the America/Vancouver time zone.\n\nTo export your workspace, open Settings, choose Export, and select JSON or Markdown. Exported files are downloaded to your computer.\n\nThese instructions describe the standard service. Enterprise contracts have separate terms and are not part of this support collection.",
+            "score": 0.5411633613522603,
+            "collection": "support"
+          }
+        ],
+        "models": {
+          "embedding": "nomic-embed-text",
+          "generation": "qwen2.5:1.5b"
+        }
+      },
+      "checks": [
+        {
+          "name": "support-decision",
+          "passed": true,
+          "detail": "Expected supported=True."
+        },
+        {
+          "name": "answer-present",
+          "passed": true,
+          "detail": "Answer must be nonempty text."
+        },
+        {
+          "name": "answer-term:45|forty-five|forty five",
+          "passed": true,
+          "detail": "At least one expected phrase must appear; this is only a lexical check."
+        },
+        {
+          "name": "forbidden-term:30",
+          "passed": true,
+          "detail": "A conflicting policy value must not appear."
+        },
+        {
+          "name": "forbidden-term:thirty",
+          "passed": true,
+          "detail": "A conflicting policy value must not appear."
+        },
+        {
+          "name": "forbidden-term:90",
+          "passed": true,
+          "detail": "A conflicting policy value must not appear."
+        },
+        {
+          "name": "forbidden-term:ninety",
+          "passed": true,
+          "detail": "A conflicting policy value must not appear."
+        },
+        {
+          "name": "citation-title:Acorn Workspace Billing",
+          "passed": true,
+          "detail": "Expected document must be cited."
+        },
+        {
+          "name": "citation-resolves:0",
+          "passed": true,
+          "detail": "Citation must resolve to the stored passage in this collection."
+        },
+        {
+          "name": "citation-collection:0",
+          "passed": true,
+          "detail": "Citation must remain inside the requested collection."
+        },
+        {
+          "name": "citation-resolves:1",
+          "passed": true,
+          "detail": "Citation must resolve to the stored passage in this collection."
+        },
+        {
+          "name": "citation-collection:1",
+          "passed": true,
+          "detail": "Citation must remain inside the requested collection."
+        }
+      ],
+      "elapsed_seconds": 2.06998
+    },
+    {
+      "id": "deleted-refund",
+      "collection": "support",
+      "question": "What is the refund request window for a standard annual subscription?",
+      "expected": {
+        "supported": false,
+        "answer_terms": [],
+        "citation_titles": []
+      },
+      "limit": 2,
+      "actual": {
+        "supported": false,
+        "answer": "I don't have enough information in this collection to answer that question.",
+        "citations": [],
+        "models": {
+          "embedding": "nomic-embed-text",
+          "generation": "qwen2.5:1.5b"
+        }
+      },
+      "checks": [
+        {
+          "name": "support-decision",
+          "passed": true,
+          "detail": "Expected supported=False."
+        },
+        {
+          "name": "answer-present",
+          "passed": true,
+          "detail": "Answer must be nonempty text."
+        },
+        {
+          "name": "abstention-has-no-citations",
+          "passed": true,
+          "detail": "Unsupported answers must not cite evidence for an answer."
+        }
+      ],
+      "elapsed_seconds": 1.28089
+    },
+    {
+      "id": "enterprise-after-support-delete",
+      "collection": "enterprise",
+      "question": "What is the enterprise annual subscription refund request window?",
+      "expected": {
+        "supported": true,
+        "answer_terms": [
+          [
+            "90",
+            "ninety"
+          ]
+        ],
+        "forbidden_terms": [
+          "30",
+          "thirty"
+        ],
+        "citation_titles": [
+          "Acorn Enterprise Billing"
+        ]
+      },
+      "limit": 2,
+      "actual": {
+        "supported": true,
+        "answer": "The enterprise annual subscription refund request window is 90 days from purchase.",
+        "citations": [
+          {
+            "id": "db50bbc368a9400cae1b506e961622ce",
+            "document_id": "billing",
+            "title": "Acorn Enterprise Billing",
+            "version": 1,
+            "ordinal": 0,
+            "text": "Fictional enterprise contract: Enterprise annual subscriptions have a 90-day refund request window from purchase. This enterprise policy applies only to the enterprise collection.",
+            "score": 0.823652419115522,
+            "collection": "enterprise"
+          }
+        ],
+        "models": {
+          "embedding": "nomic-embed-text",
+          "generation": "qwen2.5:1.5b"
+        }
+      },
+      "checks": [
+        {
+          "name": "support-decision",
+          "passed": true,
+          "detail": "Expected supported=True."
+        },
+        {
+          "name": "answer-present",
+          "passed": true,
+          "detail": "Answer must be nonempty text."
+        },
+        {
+          "name": "answer-term:90|ninety",
+          "passed": true,
+          "detail": "At least one expected phrase must appear; this is only a lexical check."
+        },
+        {
+          "name": "forbidden-term:30",
+          "passed": true,
+          "detail": "A conflicting policy value must not appear."
+        },
+        {
+          "name": "forbidden-term:thirty",
+          "passed": true,
+          "detail": "A conflicting policy value must not appear."
+        },
+        {
+          "name": "citation-title:Acorn Enterprise Billing",
+          "passed": true,
+          "detail": "Expected document must be cited."
+        },
+        {
+          "name": "citation-resolves:0",
+          "passed": true,
+          "detail": "Citation must resolve to the stored passage in this collection."
+        },
+        {
+          "name": "citation-collection:0",
+          "passed": true,
+          "detail": "Citation must remain inside the requested collection."
+        }
+      ],
+      "elapsed_seconds": 0.922103
+    }
+  ],
+  "retrieval_cases": [
+    {
+      "id": "retrieve-trial",
+      "collection": "support",
+      "question": "How many days does the Acorn Workspace trial last?",
+      "limit": 1,
+      "expected": {
+        "required_document_ids": [
+          "support"
+        ]
+      },
+      "checks": [
+        {
+          "name": "corpus-exceeds-limit",
+          "passed": true,
+          "detail": "The collection must contain more passages than top-k so retrieval cannot return the entire corpus."
+        },
+        {
+          "name": "retrieval-limit",
+          "passed": true,
+          "detail": "Retrieved passages must respect top-k."
+        },
+        {
+          "name": "required-document:support",
+          "passed": true,
+          "detail": "An expected supporting document must appear in the selected top-k passages."
+        },
+        {
+          "name": "retrieved-source-resolves:0",
+          "passed": true,
+          "detail": "Retrieved passages must resolve unchanged inside the selected collection."
+        }
+      ],
+      "corpus_chunk_count": 8,
+      "retrieved": [
+        {
+          "id": "bcfbcaa0e6504fa8bf20e8e4a0fd1d8f",
+          "document_id": "support",
+          "title": "Acorn Workspace Support",
+          "version": 1,
+          "ordinal": 0,
+          "text": "# Acorn Workspace Support\n\nThis is fictional support content for repeatable evaluation, not a real service policy.\n\nThe Acorn Workspace trial lasts 14 days. No credit card is required to start the trial.\n\nSupport is available Monday through Friday, from 09:00 to 17:00 in the America/Vancouver time zone.\n\nTo export your workspace, open Settings, choose Export, and select JSON or Markdown. Exported files are downloaded to your computer.\n\nThese instructions describe the standard service. Enterprise contracts have separate terms and are not part of this support collection.",
+          "score": 0.808383857697764
+        }
+      ],
+      "elapsed_seconds": 0.019124
+    },
+    {
+      "id": "retrieve-refund",
+      "collection": "support",
+      "question": "What is the refund request window for a standard annual subscription?",
+      "limit": 1,
+      "expected": {
+        "required_document_ids": [
+          "billing"
+        ]
+      },
+      "checks": [
+        {
+          "name": "corpus-exceeds-limit",
+          "passed": true,
+          "detail": "The collection must contain more passages than top-k so retrieval cannot return the entire corpus."
+        },
+        {
+          "name": "retrieval-limit",
+          "passed": true,
+          "detail": "Retrieved passages must respect top-k."
+        },
+        {
+          "name": "required-document:billing",
+          "passed": true,
+          "detail": "An expected supporting document must appear in the selected top-k passages."
+        },
+        {
+          "name": "retrieved-source-resolves:0",
+          "passed": true,
+          "detail": "Retrieved passages must resolve unchanged inside the selected collection."
+        }
+      ],
+      "corpus_chunk_count": 8,
+      "retrieved": [
+        {
+          "id": "3dfdd47f9f3642a0bd3c18050a24a733",
+          "document_id": "billing",
+          "title": "Acorn Workspace Billing",
+          "version": 1,
+          "ordinal": 0,
+          "text": "# Acorn Workspace Billing\n\nThis is fictional billing content for repeatable evaluation, not a real service policy.\n\nStandard annual subscriptions have a 30-day refund request window, measured from the original purchase date. Send a refund request to billing@acorn.example and include the purchase receipt.\n\nThis document does not specify how long banks take to post an approved refund, or what happens to refund requests after the standard request window expires.\n\nBilling records and workspace content are separate. Export instructions are in the Acorn Workspace Support document.",
+          "score": 0.7402357440051293
+        }
+      ],
+      "elapsed_seconds": 0.01546
+    },
+    {
+      "id": "retrieve-multi-document",
+      "collection": "support",
+      "question": "How do I export my workspace, and what is the standard annual subscription refund request window?",
+      "limit": 2,
+      "expected": {
+        "required_document_ids": [
+          "support",
+          "billing"
+        ]
+      },
+      "checks": [
+        {
+          "name": "corpus-exceeds-limit",
+          "passed": true,
+          "detail": "The collection must contain more passages than top-k so retrieval cannot return the entire corpus."
+        },
+        {
+          "name": "retrieval-limit",
+          "passed": true,
+          "detail": "Retrieved passages must respect top-k."
+        },
+        {
+          "name": "required-document:support",
+          "passed": true,
+          "detail": "An expected supporting document must appear in the selected top-k passages."
+        },
+        {
+          "name": "required-document:billing",
+          "passed": true,
+          "detail": "An expected supporting document must appear in the selected top-k passages."
+        },
+        {
+          "name": "retrieved-source-resolves:0",
+          "passed": true,
+          "detail": "Retrieved passages must resolve unchanged inside the selected collection."
+        },
+        {
+          "name": "retrieved-source-resolves:1",
+          "passed": true,
+          "detail": "Retrieved passages must resolve unchanged inside the selected collection."
+        }
+      ],
+      "corpus_chunk_count": 8,
+      "retrieved": [
+        {
+          "id": "3dfdd47f9f3642a0bd3c18050a24a733",
+          "document_id": "billing",
+          "title": "Acorn Workspace Billing",
+          "version": 1,
+          "ordinal": 0,
+          "text": "# Acorn Workspace Billing\n\nThis is fictional billing content for repeatable evaluation, not a real service policy.\n\nStandard annual subscriptions have a 30-day refund request window, measured from the original purchase date. Send a refund request to billing@acorn.example and include the purchase receipt.\n\nThis document does not specify how long banks take to post an approved refund, or what happens to refund requests after the standard request window expires.\n\nBilling records and workspace content are separate. Export instructions are in the Acorn Workspace Support document.",
+          "score": 0.749993382088613
+        },
+        {
+          "id": "bcfbcaa0e6504fa8bf20e8e4a0fd1d8f",
+          "document_id": "support",
+          "title": "Acorn Workspace Support",
+          "version": 1,
+          "ordinal": 0,
+          "text": "# Acorn Workspace Support\n\nThis is fictional support content for repeatable evaluation, not a real service policy.\n\nThe Acorn Workspace trial lasts 14 days. No credit card is required to start the trial.\n\nSupport is available Monday through Friday, from 09:00 to 17:00 in the America/Vancouver time zone.\n\nTo export your workspace, open Settings, choose Export, and select JSON or Markdown. Exported files are downloaded to your computer.\n\nThese instructions describe the standard service. Enterprise contracts have separate terms and are not part of this support collection.",
+          "score": 0.6734869810084058
+        }
+      ],
+      "elapsed_seconds": 0.016217
+    }
+  ],
+  "lifecycle_checks": [
+    {
+      "name": "restart-persists-documents",
+      "passed": true,
+      "detail": "The vector store was closed and reopened before questions."
+    },
+    {
+      "name": "update-increments-version",
+      "passed": true,
+      "detail": "Replacing a document preserves its ID and increments its version."
+    },
+    {
+      "name": "update-invalidates-citations",
+      "passed": true,
+      "detail": "Citations from the replaced billing document must stop resolving."
+    },
+    {
+      "name": "cross-collection-source-lookup",
+      "passed": true,
+      "detail": "Support source IDs cannot resolve through the enterprise collection."
+    },
+    {
+      "name": "delete-document",
+      "passed": true,
+      "detail": "The updated support billing document was deleted."
+    },
+    {
+      "name": "delete-removes-document",
+      "passed": true,
+      "detail": "The deleted document is absent from the corpus."
+    },
+    {
+      "name": "delete-invalidates-citations",
+      "passed": true,
+      "detail": "Deleted-document citations no longer resolve."
+    }
+  ],
+  "health": {
+    "available": true,
+    "ready": true,
+    "embedding_model": "nomic-embed-text",
+    "generation_model": "qwen2.5:1.5b",
+    "available_models": [
+      "nomic-embed-text:latest",
+      "qwen2.5:1.5b"
+    ],
+    "missing_models": []
+  },
+  "corpus": "Synthetic Acorn Workspace corpus with six unrelated support documents. Small top-k checks test selective retrieval; answer cases retrieve at most two passages. Automated checks cover expected phrases, citations, abstention, and collection boundaries; manual factual review remains necessary.",
+  "imported_documents": [
+    {
+      "collection": "support",
+      "id": "support",
+      "title": "Acorn Workspace Support",
+      "version": 1,
+      "chunk_count": 1
+    },
+    {
+      "collection": "support",
+      "id": "billing",
+      "title": "Acorn Workspace Billing",
+      "version": 1,
+      "chunk_count": 1
+    },
+    {
+      "collection": "support",
+      "id": "account-security",
+      "title": "Acorn Account Security",
+      "version": 1,
+      "chunk_count": 1
+    },
+    {
+      "collection": "support",
+      "id": "notifications",
+      "title": "Acorn Notification Preferences",
+      "version": 1,
+      "chunk_count": 1
+    },
+    {
+      "collection": "support",
+      "id": "keyboard",
+      "title": "Acorn Keyboard Shortcuts",
+      "version": 1,
+      "chunk_count": 1
+    },
+    {
+      "collection": "support",
+      "id": "attachments",
+      "title": "Acorn File Attachments",
+      "version": 1,
+      "chunk_count": 1
+    },
+    {
+      "collection": "support",
+      "id": "accessibility",
+      "title": "Acorn Accessibility Preferences",
+      "version": 1,
+      "chunk_count": 1
+    },
+    {
+      "collection": "support",
+      "id": "archive",
+      "title": "Acorn Project Archiving",
+      "version": 1,
+      "chunk_count": 1
+    },
+    {
+      "collection": "enterprise",
+      "id": "billing",
+      "title": "Acorn Enterprise Billing",
+      "version": 1,
+      "chunk_count": 1
+    }
+  ],
+  "checks_passed": 85,
+  "checks_total": 86,
+  "elapsed_seconds": 22.818917
+}

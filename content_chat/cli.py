@@ -36,7 +36,7 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument('--db', default='content-chat.sqlite3', help='SQLite file (default: content-chat.sqlite3)')
     p.add_argument('--ollama-url', default='http://127.0.0.1:11434')
     p.add_argument('--embedding-model', default='nomic-embed-text')
-    p.add_argument('--generation-model', default='qwen2.5:3b')
+    p.add_argument('--generation-model', default='qwen2.5:1.5b')
     p.add_argument('--timeout', type=float, default=120)
     sub = p.add_subparsers(dest='command', required=True)
     sub.add_parser('doctor', help='Check local Ollama and installed model names (does not run inference)')

@@ -119,13 +119,13 @@ class OllamaFixtureTests(unittest.TestCase):
                 self.client({}).generate(question, sources)
 
     def test_health_requires_both_models_and_understands_latest_alias(self):
-        client = self.client({"models": [{"name": "nomic-embed-text:latest"}, {"name": "qwen2.5:3b"}]})
+        client = self.client({"models": [{"name": "nomic-embed-text:latest"}, {"name": "qwen2.5:1.5b"}]})
         result = client.health()
         self.assertTrue(result["ready"])
         self.assertEqual(result["missing_models"], [])
         self.assertEqual(client._opener.open.call_args.args[0].get_method(), "GET")
         client = self.client({"models": [{"name": "nomic-embed-text:latest"}]})
-        self.assertEqual(client.health()["missing_models"], ["qwen2.5:3b"])
+        self.assertEqual(client.health()["missing_models"], ["qwen2.5:1.5b"])
 
     def test_health_rejects_malformed_tags(self):
         for response in ({}, {"models": [None]}, {"models": [{"name": 2}]}, {"models": [{"name": ""}]}):
@@ -191,6 +191,7 @@ class ConfigurationTests(unittest.TestCase):
                 Ollama(url)
 
     def test_model_names_and_timeout_are_validated(self):
+        self.assertEqual(Ollama(generation_model="qwen2.5:3b").generation_model, "qwen2.5:3b")
         for kwargs in ({"embedding_model": ""}, {"generation_model": " "}, {"timeout": 0},
                        {"timeout": True}, {"timeout": float("inf")}, {"timeout": "120"}):
             with self.subTest(kwargs=kwargs), self.assertRaises(ValueError):

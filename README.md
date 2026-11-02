@@ -2,7 +2,7 @@
 
 A local support and FAQ chatbot for your own documents. Import UTF-8 Markdown or text, retrieve relevant passages from a persistent SQLite vector store, and ask local Ollama models for answers with inspectable source citations. Use the CLI, a loopback JSON API, or the included browser interface.
 
-**Delivery status: real-model validation is blocked.** This build environment has no Ollama runtime, installed embedding/language models, or reachable local model server. The application, 86 Python regression tests, and 3 JavaScript handler tests are implemented; inference in those tests uses explicit fixtures. No AI quality or live grounding results are claimed. See [validation and outstanding acceptance evidence](VALIDATION.md).
+**Delivery status: in progress because of a demonstrated answer-quality gap.** Local model access is resolved: real `nomic-embed-text` embeddings and `qwen2.5:1.5b` generation ran through the CLI/evaluator and browser. The default model met expectations on 8 of 9 synthetic question cases; it omitted the refund window from a two-part export/refund question despite retrieving both supporting documents. This is not complete AI acceptance. See [the validation record](VALIDATION.md) and [raw synthetic evaluation](docs/live-evaluation-2026-11-01.json).
 
 ## Run locally
 
@@ -22,7 +22,7 @@ python -m pip install .
 content-chat --help
 ```
 
-Inference requires an already-running [Ollama](https://ollama.com/download) server with an embedding model and a text-generation model. Defaults are [nomic-embed-text](https://ollama.com/library/nomic-embed-text) and [qwen2.5:3b](https://ollama.com/library/qwen2.5:3b). Model availability is checked by `doctor`; successful name checks do not prove inference quality. Models have their own licenses and hardware/storage requirements.
+Inference requires an already-running [Ollama](https://ollama.com/download) server with an embedding model and a text-generation model. Defaults are [nomic-embed-text](https://ollama.com/library/nomic-embed-text) and [qwen2.5:1.5b](https://ollama.com/library/qwen2.5:1.5b). Model availability is checked by `doctor`; successful name checks do not prove inference quality. Models have their own licenses and hardware/storage requirements.
 
 For local-only operation, start Ollama with cloud features disabled. If it is already running, configure/restart it using the [official local-only guidance](https://docs.ollama.com/faq#how-do-i-disable-ollamas-cloud-features). This project does not change your server settings:
 
@@ -34,7 +34,7 @@ In another terminal, if you choose the defaults and have sufficient disk and mem
 
 ```sh
 ollama pull nomic-embed-text
-ollama pull qwen2.5:3b
+ollama pull qwen2.5:1.5b
 ```
 
 The app never downloads models or configures billing. It requests only loopback Ollama URLs, disables redirects/environment proxies, and rejects obvious `:cloud`/`-cloud` model names. A local server can still proxy remote inference or use aliases; the client cannot verify that boundary. **Keep server cloud features disabled and use installed local models** before importing documents. No hosted API spending or document transmission was performed during this build. Use current Ollama with the [batch embedding API](https://docs.ollama.com/api/embed) and [structured chat output](https://docs.ollama.com/capabilities/structured-outputs).
@@ -58,7 +58,7 @@ An answer object contains `supported`, `answer`, `citations`, and `models`. Each
 python3 -m content_chat --db demo.sqlite3 source support SOURCE_ID
 ```
 
-The expected fictional facts are a 14-day trial, export through Settings → Export, and a 30-day standard annual refund request window. These are evaluation expectations, not an example of a validated real-model answer. Questions such as bank refund processing time are unsupported by the supplied corpus.
+The expected fictional facts are a 14-day trial, export through Settings → Export, and a 30-day standard annual refund request window. These fictional facts are checked in the real-model evaluation. The current model answers the individual trial and refund questions but can omit a fact in a multi-part question. Questions such as bank refund processing time are unsupported by the supplied corpus.
 
 When sources are insufficient, the model must return `supported:false`; the app responds: “I don't have enough information in this collection to answer that question.” Empty collections abstain without inference. An unavailable or malformed model produces an error rather than a substituted answer.
 
@@ -77,7 +77,7 @@ Global options precede the command:
 python3 -m content_chat --db demo.sqlite3 \
   --ollama-url http://127.0.0.1:11434 \
   --embedding-model nomic-embed-text \
-  --generation-model qwen2.5:3b \
+  --generation-model qwen2.5:1.5b \
   --timeout 180 ask support "How long is the trial?"
 ```
 
@@ -126,6 +126,20 @@ Tests exercise exact cosine ranking, restart persistence, bounded embedding batc
 
 The separate evaluation script calls real configured local models on synthetic FAQ documents, including six unrelated support documents. It closes/reopens the vector store, runs three selective retrieval probes at top-k 1/1/2 against eight support passages, and runs nine answer/lifecycle cases with at most two retrieved passages each. It checks answerable/multi-document/unsupported questions, conflicting policies in a separate collection, document replacement, and deletion. Output records retrieved passages and exact scores, corpus counts, expected document IDs, actual answers/citations, configured models, timings and individual checks. A retrieval check fails if the corpus fits entirely inside top-k, so a trivial whole-corpus prompt cannot pass that check. It never modifies your existing database.
 
+Observed November 1, 2026 results with local Ollama 0.40.13 and synthetic inputs:
+
+| Check | Observed result |
+| --- | --- |
+| Python regressions | 86 passed; explicit fixture inference |
+| JavaScript handler regressions | 3 passed |
+| Real Chrome/model smoke | 12 checks passed with `qwen2.5:1.5b` |
+| Real selective retrieval | 3 of 3 cases met expectations |
+| Real answer cases | 8 of 9 met every case check; multi-part answer omitted the refund window |
+| Real lifecycle checks | 7 of 7 passed |
+| Default-model evaluation checks | 85 of 86 passed; evaluator correctly exits 1 |
+
+These counts are lexical/structural checks on a small synthetic corpus, **not accuracy estimates**. The [raw default-model run](docs/live-evaluation-2026-11-01.json) retains the failed check and full answers. A [separate `qwen2.5:3b` run](docs/live-evaluation-3b-2026-11-01.json) recorded 69/78 checks: it answered the combined question but falsely abstained on the supported 30-day standard and updated 45-day refund questions. Check totals depend on the emitted answer/citations, so these runs are not a controlled accuracy ranking and a larger model is not proven better. `--generation-model qwen2.5:3b` remains supported as an explicit override; defaults reproduce the tested 1.5b setup. No paid API calls were used.
+
 Exit 2 means access is blocked, 1 means checks/execution failed, and 0 means lexical/structural checks passed and **manual factual review is still required**. Expected phrases and valid citations do not prove an answer is correct. Inspect every answer and its supporting passages, particularly unsupported questions. Options `--ollama-url`, `--embedding-model`, and `--generation-model` select installed models.
 
 ## Supported scope and limits
@@ -138,6 +152,6 @@ Exit 2 means access is blocked, 1 means checks/execution failed, and 0 means lex
 - Every question is independent; there is no conversational memory. Only retrieved passages are supplied to generation, so missing a relevant passage can cause abstention.
 - Every retrieved passage is rechecked after generation, including uncited passages and abstention context; changed/deleted context requires a retry. This check does not detect newly added or unretrieved documents or freeze the corpus after a response. Citation validation proves the cited passage exists in the requested collection. It cannot prove entailment, prevent all hallucinations, or guarantee resistance to malicious instructions in imported documents. Documents are prompted as untrusted evidence; generated text is rendered as text in the UI.
 - The HTTP server handles one request at a time. Long model calls block other requests until completion/timeout. No multi-user hosting, remote providers, account connectors or outbound messaging are included.
-- Live Chrome smoke checks confirmed the synthetic library renders and editing the collection field clears stale document controls. Further browser interaction was blocked by an automatic-review timeout, so full visual QA remains unverified. HTTP and JavaScript handler regressions pass. Real model-backed acceptance remains outstanding.
+- Chrome 156 on macOS passed 12 real-model browser smoke checks, covering document imports, a supported answer, source resolution, unsupported-question abstention, and a 390px layout. The small smoke run does not establish general model quality, other browser engines, real assistive-technology behavior, or performance. A multi-part answer-quality failure remains open.
 
 [Architecture](ARCHITECTURE.md) · [Validation](VALIDATION.md) · [MIT application license](LICENSE)

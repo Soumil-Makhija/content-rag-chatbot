@@ -249,7 +249,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--output", type=Path, required=True, help="Write the evaluation JSON, including blocked and failed results.")
     parser.add_argument("--ollama-url", default="http://127.0.0.1:11434")
     parser.add_argument("--embedding-model", default="nomic-embed-text")
-    parser.add_argument("--generation-model", default="qwen2.5:3b")
+    parser.add_argument("--generation-model", default="qwen2.5:1.5b")
     args = parser.parse_args(argv)
     try:
         model = Ollama(args.ollama_url, args.embedding_model, args.generation_model)

@@ -97,7 +97,7 @@ class Ollama:
         self,
         base_url: str = "http://127.0.0.1:11434",
         embedding_model: str = "nomic-embed-text",
-        generation_model: str = "qwen2.5:3b",
+        generation_model: str = "qwen2.5:1.5b",
         timeout: float = 120,
     ):
         try:
