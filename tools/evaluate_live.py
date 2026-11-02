@@ -66,6 +66,10 @@ def check_answer(actual: dict, expected: dict, collection: str, store: Store) ->
     titles = {cite.get("title") for cite in citations if isinstance(cite.get("title"), str)}
     for title in expected.get("citation_titles", []):
         check("citation-title:" + title, title in titles, "Expected document must be cited.")
+    allowed_titles = expected.get("allowed_citation_titles")
+    if allowed_titles is not None:
+        check("citation-titles-allowed", titles <= set(allowed_titles),
+              "Only documents that support the requested facts may be cited.")
     for index, cite in enumerate(citations):
         source_id = cite.get("id")
         resolved = store.source(collection, source_id) if isinstance(source_id, str) and source_id else None

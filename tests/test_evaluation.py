@@ -76,7 +76,7 @@ class EvaluationHarnessTests(unittest.TestCase):
         self.assertEqual(report["status"], "checks_passed_manual_review_required", report)
         self.assertEqual(exit_code(report), 0)
         self.assertEqual(report["checks_passed"], report["checks_total"])
-        self.assertEqual(len(report["cases"]), 9)
+        self.assertEqual(len(report["cases"]), 11)
         self.assertEqual(len(report["retrieval_cases"]), 3)
         self.assertEqual(sum(document["chunk_count"] for document in report["imported_documents"]
                              if document["collection"] == "support"), 8)
@@ -86,7 +86,7 @@ class EvaluationHarnessTests(unittest.TestCase):
             self.assertIn("elapsed_seconds", case)
             self.assertIn("models", case["actual"])
             self.assertEqual(case["limit"], 2)
-        self.assertEqual(len(model.generation_source_counts), 9)
+        self.assertEqual(len(model.generation_source_counts), 11)
         self.assertTrue(all(count <= 2 for count in model.generation_source_counts))
         for case in report["retrieval_cases"]:
             self.assertEqual(case["corpus_chunk_count"], 8)
@@ -154,6 +154,20 @@ class EvaluationHarnessTests(unittest.TestCase):
         trial = next(case for case in report["cases"] if case["id"] == "trial")
         self.assertFalse(next(check for check in trial["checks"] if check["name"].startswith("answer-term:"))["passed"])
         self.assertEqual(exit_code(report), 1)
+
+    def test_irrelevant_citation_fails_even_when_expected_facts_and_sources_are_present(self):
+        class OverCitingModel(EvaluationFixtureModel):
+            def generate(self, question, sources):
+                result = super().generate(question, sources)
+                if "trial last" in question:
+                    result["citations"] = [source["id"] for source in sources]
+                return result
+
+        report = run_evaluation(OverCitingModel())
+        trial = next(case for case in report["cases"] if case["id"] == "trial")
+        self.assertTrue(next(check for check in trial["checks"] if check["name"].startswith("answer-term:"))["passed"])
+        self.assertFalse(next(check for check in trial["checks"] if check["name"] == "citation-titles-allowed")["passed"])
+        self.assertEqual(report["status"], "failed")
 
     def test_missing_models_stop_before_import_or_generation(self):
         class MissingModel(EvaluationFixtureModel):
