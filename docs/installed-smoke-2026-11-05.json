@@ -1,0 +1,269 @@
+{
+  "schema_version": 1,
+  "status": "checks_passed_manual_review_required",
+  "started_at": "2026-11-05T16:20:21.057240+00:00",
+  "scope": "Real local inference on synthetic FAQ inputs; not an accuracy estimate.",
+  "commands": [
+    {
+      "arguments": [
+        "/opt/homebrew/opt/python@3.14/bin/python3.14",
+        "-m",
+        "venv",
+        "<temporary-dir>/venv"
+      ],
+      "exit_code": 0,
+      "output": ""
+    },
+    {
+      "arguments": [
+        "<temporary-dir>/venv/bin/python",
+        "-m",
+        "pip",
+        "install",
+        "--cache-dir",
+        "<temporary-dir>/pip-cache",
+        "<checkout>"
+      ],
+      "exit_code": 0,
+      "output": "Processing <checkout>\n  Installing build dependencies: started\n  Installing build dependencies: finished with status 'done'\n  Getting requirements to build wheel: started\n  Getting requirements to build wheel: finished with status 'done'\n  Preparing metadata (pyproject.toml): started\n  Preparing metadata (pyproject.toml): finished with status 'done'\nBuilding wheels for collected packages: content-rag-chatbot\n  Building wheel for content-rag-chatbot (pyproject.toml): started\n  Building wheel for content-rag-chatbot (pyproject.toml): finished with status 'done'\n  Created wheel for content-rag-chatbot: filename=content_rag_chatbot-0.1.0-py3-none-any.whl size=32226 sha256=df8579e78f0f266cc0cf9cfb7eb302e8b50bb3dd41c4535615fb1e917c125afd\n  Stored in directory: /private<temporary-dir>/pip-cache/wheels/af/6d/6e/663536f18f069b4deff0a3c15b0debb663373da0ae3d3f7b82\nSuccessfully built content-rag-chatbot\nInstalling collected packages: content-rag-chatbot\nSuccessfully installed content-rag-chatbot-0.1.0\n\n[notice] A new release of pip is available: 25.3 -> 26.3\n[notice] To update, run: /private<temporary-dir>/venv/bin/python -m pip install --upgrade pip\n"
+    },
+    {
+      "arguments": [
+        "<temporary-dir>/venv/bin/content-chat",
+        "--help"
+      ],
+      "exit_code": 0,
+      "output": "usage: content-chat [-h] [--db DB] [--ollama-url OLLAMA_URL]\n                    [--embedding-model EMBEDDING_MODEL]\n                    [--generation-model GENERATION_MODEL] [--timeout TIMEOUT]\n                    {doctor,import,list,show,delete,source,ask,search,serve} ...\n\nLocal document chatbot with persistent vectors and cited answers.\n\npositional arguments:\n  {doctor,import,list,show,delete,source,ask,search,serve}\n    doctor              Check local Ollama and installed model names (does not\n                        run inference)\n    import              Embed and import/replace a .md or .txt file\n    list                List documents without model access\n    serve               Run single-user loopback web UI/API\n\noptions:\n  -h, --help            show this help message and exit\n  --db DB               SQLite file (default: content-chat.sqlite3)\n  --ollama-url OLLAMA_URL\n  --embedding-model EMBEDDING_MODEL\n  --generation-model GENERATION_MODEL\n  --timeout TIMEOUT\n"
+    },
+    {
+      "arguments": [
+        "<temporary-dir>/venv/bin/content-chat",
+        "--db",
+        "<temporary-dir>/smoke.sqlite3",
+        "import",
+        "smoke",
+        "<checkout>/examples/support.md",
+        "--id",
+        "support"
+      ],
+      "exit_code": 0,
+      "output": "{\n  \"id\": \"support\",\n  \"title\": \"support.md\",\n  \"version\": 1,\n  \"chunk_count\": 1\n}\n"
+    },
+    {
+      "arguments": [
+        "<temporary-dir>/venv/bin/content-chat",
+        "--db",
+        "<temporary-dir>/smoke.sqlite3",
+        "import",
+        "smoke",
+        "<checkout>/examples/billing.md",
+        "--id",
+        "billing"
+      ],
+      "exit_code": 0,
+      "output": "{\n  \"id\": \"billing\",\n  \"title\": \"billing.md\",\n  \"version\": 1,\n  \"chunk_count\": 1\n}\n"
+    },
+    {
+      "arguments": [
+        "<temporary-dir>/venv/bin/content-chat",
+        "--db",
+        "<temporary-dir>/smoke.sqlite3",
+        "list",
+        "smoke"
+      ],
+      "exit_code": 0,
+      "output": "[\n  {\n    \"id\": \"billing\",\n    \"title\": \"billing.md\",\n    \"version\": 1,\n    \"chunk_count\": 1\n  },\n  {\n    \"id\": \"support\",\n    \"title\": \"support.md\",\n    \"version\": 1,\n    \"chunk_count\": 1\n  }\n]\n"
+    }
+  ],
+  "checks": [
+    {
+      "name": "cli-import-support",
+      "passed": true
+    },
+    {
+      "name": "cli-import-billing",
+      "passed": true
+    },
+    {
+      "name": "cli-restart-persists-library",
+      "passed": true
+    },
+    {
+      "name": "installed-default-models-ready",
+      "passed": true
+    },
+    {
+      "name": "packaged-asset:/",
+      "passed": true
+    },
+    {
+      "name": "packaged-asset:/app.js",
+      "passed": true
+    },
+    {
+      "name": "packaged-asset:/style.css",
+      "passed": true
+    },
+    {
+      "name": "installed-real-multipart-answer",
+      "passed": true
+    },
+    {
+      "name": "source-url:support",
+      "passed": true
+    },
+    {
+      "name": "source-url:billing",
+      "passed": true
+    },
+    {
+      "name": "installed-real-unsupported-answer",
+      "passed": true
+    },
+    {
+      "name": "api-replacement-version",
+      "passed": true
+    },
+    {
+      "name": "replaced-source-invalidated",
+      "passed": true
+    },
+    {
+      "name": "updated-real-answer",
+      "passed": true
+    },
+    {
+      "name": "isolated-real-answer",
+      "passed": true
+    },
+    {
+      "name": "cross-collection-source-404",
+      "passed": true
+    },
+    {
+      "name": "api-delete-document",
+      "passed": true
+    },
+    {
+      "name": "deleted-source-invalidated",
+      "passed": true
+    },
+    {
+      "name": "deleted-policy-abstains",
+      "passed": true
+    },
+    {
+      "name": "other-collection-retained",
+      "passed": true
+    }
+  ],
+  "answers": {
+    "multipart": {
+      "supported": true,
+      "answer": "To export your workspace, open Settings, choose Export, and select JSON or Markdown. Exported files are downloaded to your computer.\n\nStandard annual subscriptions have a 30-day refund request window, measured from the original purchase date.",
+      "citations": [
+        {
+          "id": "8ebc103c67244eb582ae24aa8f9b0e3e",
+          "document_id": "support",
+          "title": "support.md",
+          "version": 1,
+          "ordinal": 0,
+          "text": "# Acorn Workspace Support\n\nThis is fictional support content for repeatable evaluation, not a real service policy.\n\nThe Acorn Workspace trial lasts 14 days. No credit card is required to start the trial.\n\nSupport is available Monday through Friday, from 09:00 to 17:00 in the America/Vancouver time zone.\n\nTo export your workspace, open Settings, choose Export, and select JSON or Markdown. Exported files are downloaded to your computer.\n\nThese instructions describe the standard service. Enterprise contracts have separate terms and are not part of this support collection.",
+          "score": 0.6734869810084058,
+          "collection": "smoke",
+          "url": "/api/collections/smoke/sources/8ebc103c67244eb582ae24aa8f9b0e3e"
+        },
+        {
+          "id": "a4b70e4a39da498d87b543a66826e406",
+          "document_id": "billing",
+          "title": "billing.md",
+          "version": 1,
+          "ordinal": 0,
+          "text": "# Acorn Workspace Billing\n\nThis is fictional billing content for repeatable evaluation, not a real service policy.\n\nStandard annual subscriptions have a 30-day refund request window, measured from the original purchase date. Send a refund request to billing@acorn.example and include the purchase receipt.\n\nThis document does not specify how long banks take to post an approved refund, or what happens to refund requests after the standard request window expires.\n\nBilling records and workspace content are separate. Export instructions are in the Acorn Workspace Support document.",
+          "score": 0.749993382088613,
+          "collection": "smoke",
+          "url": "/api/collections/smoke/sources/a4b70e4a39da498d87b543a66826e406"
+        }
+      ],
+      "models": {
+        "embedding": "nomic-embed-text",
+        "generation": "qwen2.5:3b"
+      }
+    },
+    "unsupported": {
+      "supported": false,
+      "answer": "I don't have enough information in this collection to answer that question.",
+      "citations": [],
+      "models": {
+        "embedding": "nomic-embed-text",
+        "generation": "qwen2.5:3b"
+      }
+    },
+    "updated": {
+      "supported": true,
+      "answer": "The standard annual subscription refund request window is now 45 days from purchase. This replaces the previous policy.",
+      "citations": [
+        {
+          "id": "3da3a1bc299b487b8d26c42bd115c827",
+          "document_id": "billing",
+          "title": "Updated billing policy",
+          "version": 2,
+          "ordinal": 0,
+          "text": "The standard annual subscription refund request window is now 45 days from purchase. This replaces the previous policy.",
+          "score": 0.8662078316836704,
+          "collection": "smoke",
+          "url": "/api/collections/smoke/sources/3da3a1bc299b487b8d26c42bd115c827"
+        }
+      ],
+      "models": {
+        "embedding": "nomic-embed-text",
+        "generation": "qwen2.5:3b"
+      }
+    },
+    "isolated": {
+      "supported": true,
+      "answer": "Enterprise annual subscriptions have a 90-day refund request window from purchase.",
+      "citations": [
+        {
+          "id": "616f066e04af419bb8fa232422ec2715",
+          "document_id": "billing",
+          "title": "Enterprise billing",
+          "version": 1,
+          "ordinal": 0,
+          "text": "Enterprise annual subscriptions have a 90-day refund request window from purchase.",
+          "score": 0.8667601536740801,
+          "collection": "other",
+          "url": "/api/collections/other/sources/616f066e04af419bb8fa232422ec2715"
+        }
+      ],
+      "models": {
+        "embedding": "nomic-embed-text",
+        "generation": "qwen2.5:3b"
+      }
+    },
+    "after-delete": {
+      "supported": false,
+      "answer": "I don't have enough information in this collection to answer that question.",
+      "citations": [],
+      "models": {
+        "embedding": "nomic-embed-text",
+        "generation": "qwen2.5:3b"
+      }
+    }
+  },
+  "models": {
+    "available": true,
+    "ready": true,
+    "embedding_model": "nomic-embed-text",
+    "generation_model": "qwen2.5:3b",
+    "available_models": [
+      "nomic-embed-text:latest",
+      "qwen2.5:1.5b",
+      "qwen2.5:3b"
+    ],
+    "missing_models": []
+  },
+  "elapsed_seconds": 58.324504,
+  "checks_passed": 20,
+  "checks_total": 20
+}

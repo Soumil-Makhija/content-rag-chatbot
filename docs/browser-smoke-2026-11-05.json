@@ -1,0 +1,218 @@
+{
+  "started_at": "2026-11-05T16:22:31.127Z",
+  "checks": [
+    {
+      "name": "models-ready",
+      "passed": true,
+      "detail": {
+        "available": true,
+        "ready": true,
+        "embedding_model": "nomic-embed-text",
+        "generation_model": "qwen2.5:3b",
+        "available_models": [
+          "nomic-embed-text:latest",
+          "qwen2.5:1.5b",
+          "qwen2.5:3b"
+        ],
+        "missing_models": []
+      }
+    },
+    {
+      "name": "app-heading",
+      "passed": true,
+      "detail": "Visible application heading"
+    },
+    {
+      "name": "import-support.md",
+      "passed": true,
+      "detail": {
+        "status": 200,
+        "body": {
+          "id": "de31c8eb862347f09c8f82ce00030765",
+          "title": "Acorn Workspace Support",
+          "version": 1,
+          "chunk_count": 1
+        }
+      }
+    },
+    {
+      "name": "import-billing.md",
+      "passed": true,
+      "detail": {
+        "status": 200,
+        "body": {
+          "id": "6772d16b2b9743de8a7827a23ebc4537",
+          "title": "Acorn Workspace Billing",
+          "version": 1,
+          "chunk_count": 1
+        }
+      }
+    },
+    {
+      "name": "two-visible-documents",
+      "passed": true,
+      "detail": "Acorn Workspace Billing · v1 · 1 chunksInspectDelete\nAcorn Workspace Support · v1 · 1 chunksInspectDelete"
+    },
+    {
+      "name": "supported-answer",
+      "passed": true,
+      "detail": {
+        "status": 200,
+        "body": {
+          "supported": true,
+          "answer": "The Acorn Workspace trial lasts 14 days.",
+          "citations": [
+            {
+              "id": "355f8f683370448ea96e46bf817b9fcb",
+              "document_id": "de31c8eb862347f09c8f82ce00030765",
+              "title": "Acorn Workspace Support",
+              "version": 1,
+              "ordinal": 0,
+              "text": "# Acorn Workspace Support\n\nThis is fictional support content for repeatable evaluation, not a real service policy.\n\nThe Acorn Workspace trial lasts 14 days. No credit card is required to start the trial.\n\nSupport is available Monday through Friday, from 09:00 to 17:00 in the America/Vancouver time zone.\n\nTo export your workspace, open Settings, choose Export, and select JSON or Markdown. Exported files are downloaded to your computer.\n\nThese instructions describe the standard service. Enterprise contracts have separate terms and are not part of this support collection.",
+              "score": 0.808383857697764,
+              "collection": "browser-smoke",
+              "url": "/api/collections/browser-smoke/sources/355f8f683370448ea96e46bf817b9fcb"
+            }
+          ],
+          "models": {
+            "embedding": "nomic-embed-text",
+            "generation": "qwen2.5:3b"
+          }
+        }
+      }
+    },
+    {
+      "name": "visible-citations",
+      "passed": true,
+      "detail": "Answer from your sources\n\nThe Acorn Workspace trial lasts 14 days.\n\nSupporting passages\nAcorn Workspace Support · v1 · passage 1\n\nEmbedding: nomic-embed-text · Generation: qwen2.5:3b"
+    },
+    {
+      "name": "source-record-resolves",
+      "passed": true,
+      "detail": "/api/collections/browser-smoke/sources/355f8f683370448ea96e46bf817b9fcb"
+    },
+    {
+      "name": "narrow-no-horizontal-overflow",
+      "passed": true,
+      "detail": {
+        "scroll": 390,
+        "viewport": 390
+      }
+    },
+    {
+      "name": "unsupported-abstains",
+      "passed": true,
+      "detail": {
+        "status": 200,
+        "body": {
+          "supported": false,
+          "answer": "I don't have enough information in this collection to answer that question.",
+          "citations": [],
+          "models": {
+            "embedding": "nomic-embed-text",
+            "generation": "qwen2.5:3b"
+          }
+        }
+      }
+    },
+    {
+      "name": "unsupported-visible",
+      "passed": true,
+      "detail": "Sources do not answer this\n\nI don't have enough information in this collection to answer that question.\n\nEmbedding: nomic-embed-text · Generation: qwen2.5:3b"
+    },
+    {
+      "name": "no-page-errors",
+      "passed": true,
+      "detail": []
+    }
+  ],
+  "page_errors": [],
+  "console_errors": [
+    "Failed to load resource: the server responded with a status of 404 (Not Found)"
+  ],
+  "responses": {
+    "support.md": {
+      "status": 200,
+      "body": {
+        "id": "de31c8eb862347f09c8f82ce00030765",
+        "title": "Acorn Workspace Support",
+        "version": 1,
+        "chunk_count": 1
+      }
+    },
+    "billing.md": {
+      "status": 200,
+      "body": {
+        "id": "6772d16b2b9743de8a7827a23ebc4537",
+        "title": "Acorn Workspace Billing",
+        "version": 1,
+        "chunk_count": 1
+      }
+    },
+    "supported": {
+      "status": 200,
+      "body": {
+        "supported": true,
+        "answer": "The Acorn Workspace trial lasts 14 days.",
+        "citations": [
+          {
+            "id": "355f8f683370448ea96e46bf817b9fcb",
+            "document_id": "de31c8eb862347f09c8f82ce00030765",
+            "title": "Acorn Workspace Support",
+            "version": 1,
+            "ordinal": 0,
+            "text": "# Acorn Workspace Support\n\nThis is fictional support content for repeatable evaluation, not a real service policy.\n\nThe Acorn Workspace trial lasts 14 days. No credit card is required to start the trial.\n\nSupport is available Monday through Friday, from 09:00 to 17:00 in the America/Vancouver time zone.\n\nTo export your workspace, open Settings, choose Export, and select JSON or Markdown. Exported files are downloaded to your computer.\n\nThese instructions describe the standard service. Enterprise contracts have separate terms and are not part of this support collection.",
+            "score": 0.808383857697764,
+            "collection": "browser-smoke",
+            "url": "/api/collections/browser-smoke/sources/355f8f683370448ea96e46bf817b9fcb"
+          }
+        ],
+        "models": {
+          "embedding": "nomic-embed-text",
+          "generation": "qwen2.5:3b"
+        }
+      }
+    },
+    "source": {
+      "status": 200,
+      "body": {
+        "id": "355f8f683370448ea96e46bf817b9fcb",
+        "document_id": "de31c8eb862347f09c8f82ce00030765",
+        "title": "Acorn Workspace Support",
+        "version": 1,
+        "ordinal": 0,
+        "text": "# Acorn Workspace Support\n\nThis is fictional support content for repeatable evaluation, not a real service policy.\n\nThe Acorn Workspace trial lasts 14 days. No credit card is required to start the trial.\n\nSupport is available Monday through Friday, from 09:00 to 17:00 in the America/Vancouver time zone.\n\nTo export your workspace, open Settings, choose Export, and select JSON or Markdown. Exported files are downloaded to your computer.\n\nThese instructions describe the standard service. Enterprise contracts have separate terms and are not part of this support collection."
+      }
+    },
+    "unsupported": {
+      "status": 200,
+      "body": {
+        "supported": false,
+        "answer": "I don't have enough information in this collection to answer that question.",
+        "citations": [],
+        "models": {
+          "embedding": "nomic-embed-text",
+          "generation": "qwen2.5:3b"
+        }
+      }
+    }
+  },
+  "browser_version": "156.0.8078.80",
+  "health": {
+    "application": "ready",
+    "models": {
+      "available": true,
+      "ready": true,
+      "embedding_model": "nomic-embed-text",
+      "generation_model": "qwen2.5:3b",
+      "available_models": [
+        "nomic-embed-text:latest",
+        "qwen2.5:1.5b",
+        "qwen2.5:3b"
+      ],
+      "missing_models": []
+    }
+  },
+  "finished_at": "2026-11-05T16:22:57.417Z",
+  "passed": true
+}

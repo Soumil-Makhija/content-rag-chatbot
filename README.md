@@ -1,8 +1,8 @@
 # Content Chat
 
-A local support and FAQ chatbot for your own documents. Import UTF-8 Markdown or text, retrieve relevant passages from a persistent SQLite vector store, and ask local Ollama models for answers with inspectable source citations. Use the CLI, a loopback JSON API, or the included browser interface.
+A local support and FAQ chatbot for your own documents. Import UTF-8 Markdown or text, retrieve relevant passages from a persistent SQLite vector store, and get model-selected quoted answers with inspectable source citations. Use the CLI, a loopback JSON API, or the included browser interface.
 
-**Delivery status: in progress because of a demonstrated answer-quality gap.** Local model access is resolved: real `nomic-embed-text` embeddings and `qwen2.5:1.5b` generation ran through the CLI/evaluator and browser. The default model met expectations on 8 of 9 synthetic question cases; it omitted the refund window from a two-part export/refund question despite retrieving both supporting documents. This is not complete AI acceptance. See [the validation record](VALIDATION.md) and [raw synthetic evaluation](docs/live-evaluation-2026-11-01.json).
+**Delivery status: working local release, validated November 5, 2026.** Real local `nomic-embed-text` embeddings and `qwen2.5:3b` generation passed the installed CLI/HTTP workflow (20/20 checks) and current Chrome workflow (12/12 checks). The November 4 main/additional evaluations passed 107/107 and 114/114 checks; all 23 question cases were reviewed against their passages. See the [validation record](VALIDATION.md), [installed results](docs/installed-smoke-2026-11-05.json), and [browser results](docs/browser-smoke-2026-11-05.json). These small synthetic regression sets do not establish general answer accuracy.
 
 ## Run locally
 
@@ -22,7 +22,7 @@ python -m pip install .
 content-chat --help
 ```
 
-Inference requires an already-running [Ollama](https://ollama.com/download) server with an embedding model and a text-generation model. Defaults are [nomic-embed-text](https://ollama.com/library/nomic-embed-text) and [qwen2.5:1.5b](https://ollama.com/library/qwen2.5:1.5b). Model availability is checked by `doctor`; successful name checks do not prove inference quality. Models have their own licenses and hardware/storage requirements.
+Inference requires an already-running [Ollama](https://ollama.com/download) server with an embedding model and a text-generation model. Defaults are [nomic-embed-text](https://ollama.com/library/nomic-embed-text) and [qwen2.5:3b](https://ollama.com/library/qwen2.5:3b), tested with Ollama 0.40.13. Model availability is checked by `doctor`; successful name checks do not prove inference quality. Models have their own licenses and hardware/storage requirements.
 
 For local-only operation, start Ollama with cloud features disabled. If it is already running, configure/restart it using the [official local-only guidance](https://docs.ollama.com/faq#how-do-i-disable-ollamas-cloud-features). This project does not change your server settings:
 
@@ -34,7 +34,7 @@ In another terminal, if you choose the defaults and have sufficient disk and mem
 
 ```sh
 ollama pull nomic-embed-text
-ollama pull qwen2.5:1.5b
+ollama pull qwen2.5:3b
 ```
 
 The app never downloads models or configures billing. It requests only loopback Ollama URLs, disables redirects/environment proxies, and rejects obvious `:cloud`/`-cloud` model names. A local server can still proxy remote inference or use aliases; the client cannot verify that boundary. **Keep server cloud features disabled and use installed local models** before importing documents. No hosted API spending or document transmission was performed during this build. Use current Ollama with the [batch embedding API](https://docs.ollama.com/api/embed) and [structured chat output](https://docs.ollama.com/capabilities/structured-outputs).
@@ -58,9 +58,11 @@ An answer object contains `supported`, `answer`, `citations`, and `models`. Each
 python3 -m content_chat --db demo.sqlite3 source support SOURCE_ID
 ```
 
-The expected fictional facts are a 14-day trial, export through Settings → Export, and a 30-day standard annual refund request window. These fictional facts are checked in the real-model evaluation. The current model answers the individual trial and refund questions but can omit a fact in a multi-part question. Questions such as bank refund processing time are unsupported by the supplied corpus.
+The expected fictional facts are a 14-day trial, export through Settings → Export → JSON or Markdown, and a 30-day standard annual refund request window measured from purchase. The current real-model evaluation answers the individual and combined export/refund questions completely. Questions such as bank refund processing time are unsupported by the supplied corpus.
 
-When sources are insufficient, the model must return `supported:false`; the app responds: “I don't have enough information in this collection to answer that question.” Empty collections abstain without inference. An unavailable or malformed model produces an error rather than a substituted answer.
+Answers preserve exact selected source wording. Real model calls plan the requested facts, select quotes separately for each request, and review each quoted answer against its full cited passages. A separate source-free review checks whether a rewritten or split plan covers the original question; an unchanged single request establishes coverage by exact equality. The application verifies quote provenance before composition. This extractive workflow does not generate a paraphrased answer, and model judgments about relevance, support and completeness remain fallible.
+
+If any requested part has insufficient evidence or fails review, the entire answer has `supported:false`; the app responds: “I don't have enough information in this collection to answer that question.” Empty collections abstain without inference. An unavailable or malformed model produces an error rather than a substituted answer.
 
 Change a file and reimport it with the **same `--id`** to replace the document. Imports embed at most 32 chunks per request and validate every batch before writing. Replacement increments its version and atomically replaces all chunks/vectors after every batch succeeds. Without `--id`, every import adds a new document, even if its title matches. Failed embeddings preserve the previous document.
 
@@ -77,7 +79,7 @@ Global options precede the command:
 python3 -m content_chat --db demo.sqlite3 \
   --ollama-url http://127.0.0.1:11434 \
   --embedding-model nomic-embed-text \
-  --generation-model qwen2.5:1.5b \
+  --generation-model qwen2.5:3b \
   --timeout 180 ask support "How long is the trial?"
 ```
 
@@ -120,27 +122,32 @@ python3 -m compileall -q content_chat tests tools
 node --check content_chat/web/app.js
 node --test tests/web-state.test.js  # Node 18+; no npm dependencies
 python3 tools/evaluate_live.py --output local-evaluation.json
+python3 tools/evaluate_additional.py --output local-additional-evaluation.json
+python3 tools/smoke_installed.py --output local-evaluation-installed.json
 ```
 
-Tests exercise exact cosine ranking, restart persistence, bounded embedding batches and late-batch rollback, concurrent model changes, replacements/deletion, collection isolation, stale retrieved context, citation validation, CLI subprocess use, real local HTTP requests, truncated model HTTP responses, collection control safety, and the evaluation harness. All test inference is explicitly synthetic. CI runs Python 3.11/3.14 tests, packaging, entry-point smoke checks, JavaScript syntax and handler tests; it does not download/run models or send messages.
+Tests exercise exact cosine ranking, restart persistence, bounded embedding batches and late-batch rollback, concurrent model changes, replacements/deletion, collection isolation, stale retrieved context, quote/citation validation, source-free coverage and isolated request reviews, bounded inference calls, CLI subprocess use, actual loopback HTTP requests, truncated model HTTP responses, collection control safety, and the evaluation harnesses. All regression-test inference is explicitly synthetic. CI runs Python 3.11/3.14 tests, packaging, entry-point smoke checks, JavaScript syntax and handler tests; it does not download/run models or send messages.
 
-The separate evaluation script calls real configured local models on synthetic FAQ documents, including six unrelated support documents. It closes/reopens the vector store, runs three selective retrieval probes at top-k 1/1/2 against eight support passages, and runs nine answer/lifecycle cases with at most two retrieved passages each. It checks answerable/multi-document/unsupported questions, conflicting policies in a separate collection, document replacement, and deletion. Output records retrieved passages and exact scores, corpus counts, expected document IDs, actual answers/citations, configured models, timings and individual checks. A retrieval check fails if the corpus fits entirely inside top-k, so a trivial whole-corpus prompt cannot pass that check. It never modifies your existing database.
+The main evaluator calls real configured local models on synthetic FAQ documents, including six unrelated support documents. It closes/reopens the vector store, runs three selective retrieval probes at top-k 1/1/2 against eight support passages, and runs 11 question cases with at most two retrieved passages each. It checks individual, compound, reversed-order and unsupported questions, conflicting policies in a separate collection, document replacement and deletion. A retrieval check fails if the corpus fits entirely inside top-k. The additional evaluator uses six different synthetic documents and 12 cases covering negative policies, tier qualifiers, typical ranges versus guaranteed deadlines, mixed known/unknown requests, and an assistant-directed instruction embedded in source text. That set informed development and is a regression set, not an untouched holdout. Both evaluators create disposable databases and retain full answers, sources, checks and timings.
 
-Observed November 1, 2026 results with local Ollama 0.40.13 and synthetic inputs:
+The opt-in `smoke_installed.py` command creates a fresh virtual environment and runs the installed CLI and HTTP server outside the checkout against real local models. It checks packaged browser assets, citations, persistence, replacement/deletion and collection isolation using synthetic inputs. Installation may fetch the declared build dependency through pip; the smoke does not download models or call paid APIs. The November 5 run passed all 20 checks in 58.324504 seconds; all five answers/abstentions were manually reviewed.
+
+Observed November 4–5, 2026 results with local Ollama 0.40.13, `nomic-embed-text` and `qwen2.5:3b`:
 
 | Check | Observed result |
 | --- | --- |
-| Python regressions | 86 passed; explicit fixture inference |
+| Python regressions | 108 passed; explicit fixture inference |
 | JavaScript handler regressions | 3 passed |
-| Real Chrome/model smoke | 12 checks passed with `qwen2.5:1.5b` |
-| Real selective retrieval | 3 of 3 cases met expectations |
-| Real answer cases | 8 of 9 met every case check; multi-part answer omitted the refund window |
-| Real lifecycle checks | 7 of 7 passed |
-| Default-model evaluation checks | 85 of 86 passed; evaluator correctly exits 1 |
+| Main real-model evaluation | 107/107 checks; 11 question cases, 3 selective retrieval probes and 7 lifecycle checks; 74.030123 seconds |
+| Additional real-model evaluation | 114/114 checks; 12 question cases; 97.724859 seconds |
+| Manual factual review | All 23 question cases reviewed against cited passages; no material issue found |
+| Installed-package/HTTP integration | 20/20 checks; fresh virtualenv, installed CLI and HTTP server outside checkout; five answers/abstentions reviewed |
+| Current Chrome/model smoke | 12/12 checks; uploads, cited answer, source lookup, abstention, 390px layout; screenshots reviewed |
+| Remote CI | [Integration checkpoint passed](https://github.com/Soumil-Makhija/content-rag-chatbot/actions/runs/42063627885) on Python 3.11/3.14; exact revision results in [Actions](https://github.com/Soumil-Makhija/content-rag-chatbot/actions) |
 
-These counts are lexical/structural checks on a small synthetic corpus, **not accuracy estimates**. The [raw default-model run](docs/live-evaluation-2026-11-01.json) retains the failed check and full answers. A [separate `qwen2.5:3b` run](docs/live-evaluation-3b-2026-11-01.json) recorded 69/78 checks: it answered the combined question but falsely abstained on the supported 30-day standard and updated 45-day refund questions. Check totals depend on the emitted answer/citations, so these runs are not a controlled accuracy ranking and a larger model is not proven better. `--generation-model qwen2.5:3b` remains supported as an explicit override; defaults reproduce the tested 1.5b setup. No paid API calls were used.
+These counts are lexical/structural checks on small synthetic corpora, **not accuracy estimates**. The unchanged [main results](docs/live-evaluation-2026-11-04.json) and [additional results](docs/additional-evaluation-2026-11-04.json) record actual answers and citations. Check totals depend on emitted answers/citations and do not provide a controlled model ranking. No paid API calls were used. Earlier failures remain in the [validation history](VALIDATION.md), including the [November 1 omission](docs/live-evaluation-2026-11-01.json), [earlier 3b false abstentions](docs/live-evaluation-3b-2026-11-01.json), and [first additional evaluation](docs/additional-evaluation-first-2026-11-03.json).
 
-Exit 2 means access is blocked, 1 means checks/execution failed, and 0 means lexical/structural checks passed and **manual factual review is still required**. Expected phrases and valid citations do not prove an answer is correct. Inspect every answer and its supporting passages, particularly unsupported questions. Options `--ollama-url`, `--embedding-model`, and `--generation-model` select installed models.
+For the two model evaluators, exit 2 means access is blocked, 1 means checks/execution failed, and 0 means lexical/structural checks passed and **manual factual review is still required**. The installed smoke returns 1 on failed setup or integration checks and 0 after its checks pass. Expected phrases and valid citations do not prove an answer is correct. Inspect every answer and its supporting passages, particularly unsupported questions. Options `--ollama-url`, `--embedding-model`, and `--generation-model` select installed models.
 
 ## Supported scope and limits
 
@@ -150,8 +157,9 @@ Exit 2 means access is blocked, 1 means checks/execution failed, and 0 means lex
 - SQLite stores normalized vectors and performs exact cosine search in Python, linear in the selected collection's chunks. This is a small local vector database, without approximate-neighbor indexing or a total corpus quota. Data is plaintext at rest.
 - Embedding identity is tracked by model name and dimensions, not a weight digest. Do not replace a model tag's weights beneath an existing collection. Use a new collection or delete/reimport all documents when changing the embedding space. The generation model can change independently.
 - Every question is independent; there is no conversational memory. Only retrieved passages are supplied to generation, so missing a relevant passage can cause abstention.
+- Answers are extracts, with no generated paraphrase or calculation. Planning and support reviews can still omit a qualifier, choose misleading text, falsely abstain or approve an irrelevant quote. Full cited passages remain inspectable; one successful instruction-bearing source test does not guarantee resistance to prompt injection.
 - Every retrieved passage is rechecked after generation, including uncited passages and abstention context; changed/deleted context requires a retry. This check does not detect newly added or unretrieved documents or freeze the corpus after a response. Citation validation proves the cited passage exists in the requested collection. It cannot prove entailment, prevent all hallucinations, or guarantee resistance to malicious instructions in imported documents. Documents are prompted as untrusted evidence; generated text is rendered as text in the UI.
-- The HTTP server handles one request at a time. Long model calls block other requests until completion/timeout. No multi-user hosting, remote providers, account connectors or outbound messaging are included.
-- Chrome 156 on macOS passed 12 real-model browser smoke checks, covering document imports, a supported answer, source resolution, unsupported-question abstention, and a 390px layout. The small smoke run does not establish general model quality, other browser engines, real assistive-technology behavior, or performance. A multi-part answer-quality failure remains open.
+- A supported answer uses three generation calls when the plan is exactly the original question, or `2N + 2` calls for a rewritten/split plan with `N` requests, bounded to 16 requests and 34 calls. Retrieval embeddings are additional. `--timeout` applies to each request, not the whole question; long inference can exceed that duration. The HTTP server handles one request at a time. No multi-user hosting, remote providers, account connectors or outbound messaging are included.
+- Chrome 156 on macOS passed 12 real-model smoke checks on November 5 with the current 3b flow, including uploads, a supported answer, source resolution, unsupported abstention and a 390px layout. [Desktop](docs/browser-desktop-2026-11-05.png) and [narrow](docs/browser-narrow-2026-11-05.png) screenshots were reviewed. This does not establish other browser engines, real assistive-technology behavior, model accuracy or performance.
 
 [Architecture](ARCHITECTURE.md) · [Validation](VALIDATION.md) · [MIT application license](LICENSE)
